@@ -171,6 +171,13 @@
   .card.goal { border-color: rgba(255, 191, 90, .45); background: rgba(255, 191, 90, .05); }
   .card .next { font-size: 12.5px; color: var(--mut); }
   .card .next b { color: var(--txt); font-weight: 600; }
+  .card .helpl { font-size: 12px; color: var(--cy); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; align-self: flex-start; }
+  #info { position: fixed; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; background: rgba(0, 4, 8, .72); }
+  #info .box { width: min(620px, 92vw); }
+  #info .k { font-size: 12px; letter-spacing: .22em; color: var(--am); }
+  #info h2 { margin: 6px 0 14px; letter-spacing: .06em; }
+  #info ul { margin: 0 0 20px; padding-left: 20px; display: flex; flex-direction: column; gap: 9px; font-size: 15.5px; line-height: 1.45; color: #d6e6ec; }
+  #info li::marker { color: var(--cy); }
   #shop footer { margin-top: 12px; display: flex; justify-content: space-between; align-items: center; color: var(--mut); font-size: 13px; }
 
   @media (max-height: 600px) { #menu { padding-bottom: 5vh; } #menu h1 { font-size: 64px; } #menu .how { display: none; } #menu .tag { margin: 10px 0 16px; } }
@@ -275,24 +282,26 @@
   </div>
 </div>
 
+<div id="info" class="hidden"><div class="box panel"><div class="k" id="info-k">NEU FREIGESCHALTET</div><h2 id="info-t"></h2><ul id="info-l"></ul><button id="btn-info" class="pri">Verstanden</button></div></div>
+
 <div id="loading"><b>LUNAR CLEAN</b><span>MONDOBERFLÄCHE WIRD VERSTAUBT …</span></div>
 
 <script src="lib/three.min.js"></script>
-<script src="js/lc-util.js?v=0.4.0"></script>
-<script src="js/lc-world.js?v=0.4.0"></script>
-<script src="js/lc-dust.js?v=0.4.0"></script>
-<script src="js/lc-base.js?v=0.4.0"></script>
-<script src="js/lc-audio.js?v=0.4.0"></script>
-<script src="js/lc-player.js?v=0.4.0"></script>
-<script src="js/lc-vacuum.js?v=0.4.0"></script>
-<script src="js/lc-post.js?v=0.4.0"></script>
-<script src="js/lc-sacks.js?v=0.4.0"></script>
-<script src="js/lc-buggy.js?v=0.4.0"></script>
-<script src="js/lc-map.js?v=0.4.0"></script>
-<script src="js/lc-avatar.js?v=0.4.0"></script>
-<script src="js/lc-globe.js?v=0.4.0"></script>
-<script src="js/lc-cutscene.js?v=0.4.0"></script>
-<script src="js/lc-ui.js?v=0.4.0"></script>
-<script src="js/lc-main.js?v=0.4.0"></script>
+<script src="js/lc-util.js?v=0.4.1"></script>
+<script src="js/lc-world.js?v=0.4.1"></script>
+<script src="js/lc-dust.js?v=0.4.1"></script>
+<script src="js/lc-base.js?v=0.4.1"></script>
+<script src="js/lc-audio.js?v=0.4.1"></script>
+<script src="js/lc-player.js?v=0.4.1"></script>
+<script src="js/lc-vacuum.js?v=0.4.1"></script>
+<script src="js/lc-post.js?v=0.4.1"></script>
+<script src="js/lc-sacks.js?v=0.4.1"></script>
+<script src="js/lc-buggy.js?v=0.4.1"></script>
+<script src="js/lc-map.js?v=0.4.1"></script>
+<script src="js/lc-avatar.js?v=0.4.1"></script>
+<script src="js/lc-globe.js?v=0.4.1"></script>
+<script src="js/lc-cutscene.js?v=0.4.1"></script>
+<script src="js/lc-ui.js?v=0.4.1"></script>
+<script src="js/lc-main.js?v=0.4.1"></script>
 </body>
 </html>

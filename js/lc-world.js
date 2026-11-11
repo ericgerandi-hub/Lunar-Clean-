@@ -50,6 +50,10 @@
     }
   })();
 
+  W.flats = [];
+  // muss vor W.build aufgerufen werden
+  W.addFlat = function (x, z, r, drop) { const h = W.heightAt(x, z) - (drop || 0); W.flats.push({ x, z, r, h }); };
+
   // ---------- Höhe des Geländes ----------
   W.heightAt = function (x, z) {
     const r = Math.hypot(x, z);
@@ -97,6 +101,11 @@
       }
       const mx = x - 2.6, mz = z - 0.7, md = (mx * mx + mz * mz) / 10;
       if (md < 6) h += 1.15 * Math.exp(-md);
+      // eingeebnete Flächen (Landeplatz, Entladestation): das Gelände ragt dort nicht durch den Boden
+      for (let i = 0; i < W.flats.length; i++) {
+        const f = W.flats[i], dx = x - f.x, dz = z - f.z, d2 = dx * dx + dz * dz, ro = f.r + 2.5;
+        if (d2 < ro * ro) h = U.lerp(h, f.h, U.smoothstep(ro, f.r, Math.sqrt(d2)));
+      }
     }
     return h;
   };

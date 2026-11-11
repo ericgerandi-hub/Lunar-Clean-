@@ -79,7 +79,7 @@
 
   // ---------- Werkstatt ----------
   // items: [{id, name, desc, level, max, cost, nowTxt, nextTxt, locked, lockTxt, teaser}]
-  UI.shopRender = function (items, money, onBuy) {
+  UI.shopRender = function (items, money, onBuy, onHelp) {
     el['shop-money'].textContent = nf0.format(Math.floor(money)) + ' ¢';
     const c = el.cards; c.innerHTML = '';
     items.forEach(it => {
@@ -113,6 +113,7 @@
         b.addEventListener('click', () => onBuy(it.id));
       }
       d.appendChild(b);
+      if (it.help && it.level > 0 && onHelp) { const h = document.createElement('a'); h.className = 'helpl'; h.textContent = 'Wie funktioniert das?'; h.addEventListener('click', () => onHelp(it.id)); d.appendChild(h); }
       c.appendChild(d);
     });
   };

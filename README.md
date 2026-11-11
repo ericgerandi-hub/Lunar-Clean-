@@ -24,7 +24,7 @@ und verdien dir so den Rückflug.
 | M | Karte (Maus: verschieben, zoomen, Markierungen) · noch mal M: ganzer Mond |
 | Esc | Pause und Einstellungen |
 
-## Stand (Version 0.4.0)
+## Stand (Version 0.4.1)
 
 Sektor 1 (ein Krater) mit Werkzeug-Reihe Löffel → Schaufel → Handsauger → Industriesauger XL → Mondbuggy,
 Säcken zum Abstellen, Staublager und Fahrzeug-Entladestation, Werkstatt mit Upgrades, Jetpack, Glitzerstaub,

@@ -4,32 +4,40 @@
    ========================================================= */
 (function (LC) {
   const U = LC.U, W = LC.World, D = LC.Dust, B = LC.Base, PL = LC.Player, V = LC.Vacuum, P = LC.Post, A = LC.Audio, UI = LC.UI, SK = LC.Sacks, BG = LC.Buggy, AV = LC.Avatar, GL = LC.Globe, CS = LC.Cutscene;
-  const VERSION = '0.4.0';                 // nach jeder Änderung hochzählen
+  const VERSION = '0.4.1';                 // nach jeder Änderung hochzählen
   const SAVE_KEY = 'lunarclean_save_v1', SET_KEY = 'lunarclean_settings_v1';
+  const DONE_AT = 0.9995;                  // Sektor gilt erst als fertig, wenn die Anzeige 100 % zeigt
   const PRICE_N = 2, PRICE_G = 15;         // ¢ pro kg: normaler Staub / Glitzerstaub
   const TEST = /[?&]test/.test(location.search);
 
   // ---------- Upgrades ----------
   const UP = {
-    shovel: { name: 'Schaufel', max: 1, costs: [30],
+    shovel: { help: ["Taste 2 oder das Mausrad wählt die Schaufel, Taste 1 den Löffel.", "Linke Maustaste halten: ein Schwung nach dem anderen.", "Sie schafft pro Schwung etwa dreimal so viel wie der Löffel."],
+      name: 'Schaufel', max: 1, costs: [30],
       desc: 'Schluss mit dem Löffel: Eine Schaufel schafft pro Schwung dreimal so viel.' },
-    vac: { name: 'Handsauger (gebraucht)', max: 1, costs: [120], needs: 'shovel',
+    vac: { help: ["Taste 3 wählt den Handsauger.", "Linke Maustaste halten und über den Staub fahren. Der blaue Ring zeigt, wo er saugt.", "Er stottert noch – eine Reparatur macht ihn deutlich stärker.", "Ab jetzt kannst du Düse und Motor einzeln ausbauen."],
+      name: 'Handsauger (gebraucht)', max: 1, costs: [120], needs: 'shovel',
       desc: 'Saugt, solange du die Maustaste hältst. Stammt aus dem Wrack und stottert leider ziemlich.' },
-    repair: { name: 'Sauger reparieren', max: 1, costs: [150], needs: 'vac',
+    repair: { help: ["Der Motor läuft wieder rund: kein Stottern mehr und rund 60 % mehr Saugkraft.", "Das Lämpchen am Sauger leuchtet jetzt grün."],
+      name: 'Sauger reparieren', max: 1, costs: [150], needs: 'vac',
       desc: 'Schluss mit dem Stottern: Der Motor läuft wieder rund und saugt deutlich stärker.' },
     width: { name: 'Breitere Düse', max: 4, costs: [120, 350, 900, 2200], vals: [0.62, 0.85, 1.15, 1.55, 2.05], needs: 'vac',
       desc: 'Der Sauger nimmt eine größere Fläche auf einmal.', fmt: v => UI.n1(v * 2) + ' m breit' },
     power: { name: 'Stärkerer Motor', max: 3, costs: [150, 500, 1400], vals: [1, 1.5, 2.2, 3.2], needs: 'vac',
       desc: 'Der Sauger saugt schneller und reicht weiter.', fmt: v => Math.round(v * 100) + ' % Saugkraft' },
-    tank: { name: 'Größerer Staubbehälter', max: 4, costs: [40, 150, 500, 1500], vals: [12, 30, 70, 160, 400],
+    tank: { help: ["Dein Staubbehälter fasst jetzt mehr.", "Ist er voll: zum Staublager laufen – oder mit G in einen Sack umfüllen und hinwerfen.", "Säcke hebst du mit E wieder auf (bis zu 2 gleichzeitig). Später lädt der Buggy sie im Vorbeifahren ein.", "In einen Sack passt immer genau ein voller Behälter."],
+      name: 'Größerer Staubbehälter', max: 4, costs: [40, 150, 500, 1500], vals: [12, 30, 70, 160, 400],
       desc: 'Mehr Staub pro Tour. So viel passt auch in einen Sack.', fmt: v => UI.n0(v) + ' kg' },
-    xl: { name: 'Industriesauger XL', max: 1, costs: [2500], needs: 'repair',
+    xl: { help: ["Taste 4 wählt den Industriesauger XL.", "Er saugt 60 % breiter und 70 % schneller als der Handsauger.", "Deine Upgrades für Düse und Motor wirken auch auf ihn."],
+      name: 'Industriesauger XL', max: 1, costs: [2500], needs: 'repair',
       desc: 'Das große Gerät: saugt viel breiter und noch mal schneller. Düse und Motor zählen weiter mit.' },
-    jet: { name: 'Jetpack', max: 1, costs: [750],
+    jet: { help: ["In der Luft die Leertaste gedrückt halten: Du steigst.", "C gedrückt halten: Du sinkst schneller, statt auf die Schwerkraft zu warten.", "Der Treibstoff lädt sich am Boden von allein wieder auf. Die Anzeige ist unten links."],
+      name: 'Jetpack', max: 1, costs: [750],
       desc: 'Leertaste in der Luft gedrückt halten und abheben.' },
     fuel: { name: 'Jetpack-Treibstoff', max: 2, costs: [400, 1200], vals: [3.2, 5.5, 9], needs: 'jet',
       desc: 'Länger in der Luft bleiben.', fmt: v => UI.n1(v) + ' s Schub' },
-    buggy: { name: 'Mondbuggy', max: 1, costs: [6000], needs: 'repair',
+    buggy: { help: ["Der Buggy steht neben der Basis. Mit E steigst du ein und wieder aus.", "Fahren: W und S für Gas und Bremse, A und D zum Lenken, mit der Maus umsehen.", "Saugen: Linke Maustaste halten. Der Saugkopf vorn putzt eine über 4 m breite Spur direkt in den Laderaum (1.500 kg).", "Die zwei Bildschirme links und rechts zeigen die Saugkante. Die orange Linie ist das Ende deiner Spur – so fährst du Bahn an Bahn.", "Schlauch: Arbeitest du zu Fuß mit dem Sauger näher als 16 m am Buggy, geht der Staub direkt in den Buggy statt in deinen kleinen Behälter. Unten links steht dann „Buggy-Laderaum“.", "Säcke lädt der Buggy im Vorbeifahren von allein ein.", "Entladen: auf die gelb markierte Fahrzeug-Entladung neben dem Staublager fahren und E drücken."],
+      name: 'Mondbuggy', max: 1, costs: [6000], needs: 'repair',
       desc: 'Fahren statt laufen: breiter Saugkopf vorn, 1.500 kg Laderaum, lädt Säcke ein. Mit Schlauch für deinen Handsauger. Entladen an der Fahrzeug-Station.' }
   };
   const UP_ORDER = ['shovel', 'vac', 'repair', 'width', 'power', 'tank', 'xl', 'jet', 'fuel', 'buggy'];
@@ -120,6 +128,10 @@
     try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
   }
   function applyState() {
+    // unter Landeplatz und Entladestation liegt kein Staub; unsichtbare Reste zählen nicht
+    D.clearArea(B.pad.x, B.pad.z, B.pad.r + 0.4); D.clearArea(BG.station.x, BG.station.z, 2.8, 4.1, 0.5); D.normalize();
+    // wurde der Sektor in einer älteren Version zu früh als fertig gemeldet? Dann geht es weiter
+    if (G.stats.sectorDone && D.percentClean() < DONE_AT) { G.stats.sectorDone = false; G.stats.bonusPaid = true; G.stage = Math.min(G.stage, GOALS.length - 2); }
     LC.Map.marks = G.marks;
     V.setRepaired(G.up.repair > 0);
     const t = TOOLS.filter(x => x.id === G.tool)[0];
@@ -176,6 +188,7 @@
     if (['niedrig', 'mittel', 'hoch'].indexOf(S.gfx) < 0) S.gfx = 'mittel';
 
     D.init();
+    W.addFlat(B.pad.x, B.pad.z, B.pad.r + 0.8, 0.05); W.addFlat(BG.station.x, BG.station.z, 5.0, 0.05);
     W.build(scene, D.tex, D.glitTex);
     if (S.gfx === 'niedrig') W.sun.shadow.mapSize.set(2048, 2048);
     B.build(scene);
@@ -231,7 +244,7 @@
     UI.show('menu', s === 'menu'); UI.show('ver', s === 'menu');
     UI.show('pause', s === 'pause'); UI.show('shop', s === 'shop');
     UI.show('hud', s === 'play' || s === 'shop' || s === 'pause' || s === 'wait' || s === 'map');
-    showEl('globe-ui', s === 'globe'); showEl('cine', s === 'cut');
+    showEl('globe-ui', s === 'globe'); showEl('cine', s === 'cut'); if (s !== 'shop') showEl('info', false);
     if (s !== 'play') { fire = false; PL.keys = {}; PL.mdx = PL.mdy = 0; A.setJet(0); endEmote(); setEmoteMenu(false); }
     if (s !== 'cut') { $('black').style.opacity = 0; $('flash').style.opacity = 0; }
     showEl('keys', s !== 'map');
@@ -357,7 +370,8 @@
             if (/^Digit[1-4]$/.test(e.code) && !BG.driving) { const t = TOOLS[+e.code.slice(5) - 1]; if (t.has()) setTool(t.id); else { A.play('deny'); UI.toast(t.name + ' hast du noch nicht – gibt es in der Werkstatt.', '', 2.2); } }
         }
       } else if (state === 'shop') {
-        if ((e.code === 'KeyE' || e.code === 'Escape') && !e.repeat) closeShop();
+        if (!$('info').classList.contains('hidden')) { if (!e.repeat && (e.code === 'Enter' || e.code === 'KeyE' || e.code === 'Escape' || e.code === 'Space')) hideHelp(); }
+        else if ((e.code === 'KeyE' || e.code === 'Escape') && !e.repeat) closeShop();
       } else if (state === 'map') {
         if (e.code === 'KeyM' && !e.repeat) openGlobe(); else if (e.code === 'Escape') closeMap();
       } else if (state === 'globe') {
@@ -378,6 +392,7 @@
     e['btn-resume'].addEventListener('click', () => startPlay());
     e['btn-tomenu'].addEventListener('click', () => { save(); UI.el['btn-play'].textContent = 'Weiterspielen'; UI.show('btn-new', true); setState('menu'); });
     e['btn-shopclose'].addEventListener('click', closeShop);
+    $('btn-info').addEventListener('click', hideHelp);
     let wipeArmed = 0;
     e['btn-wipe'].addEventListener('click', () => {
       if (performance.now() - wipeArmed < 4000) { newGame(); e['btn-wipe'].textContent = 'Löschen und neu anfangen'; wipeArmed = 0; shadowFrames = 3; startPlay(true); }
@@ -400,7 +415,7 @@
   function shopItems() {
     const items = UP_ORDER.map(id => {
       const u = UP[id], lv = G.up[id];
-      const it = { id, name: u.name, desc: u.desc, level: lv, max: u.max, cost: u.costs[lv] };
+      const it = { id, name: u.name, desc: u.desc, level: lv, max: u.max, cost: u.costs[lv], help: !!u.help };
       if (u.vals) { it.nowTxt = u.fmt(u.vals[lv]); if (lv < u.max) it.nextTxt = u.fmt(u.vals[lv + 1]); }
       if (u.needs && !G.up[u.needs]) { it.locked = true; it.lockTxt = 'Erst ' + UP[u.needs].name + ' kaufen'; }
       return it;
@@ -409,7 +424,17 @@
     items.push({ id: 'rocket', name: 'Rakete nach Hause', desc: 'Der Grund, warum du das alles machst. Ein Ticket zurück zur Erde.', teaser: '1.000.000 ¢ · noch ein weiter Weg', max: 1, level: 0, goal: true });
     return items;
   }
-  function renderShop() { UI.shopRender(shopItems(), G.money, buy); }
+  function renderShop() { UI.shopRender(shopItems(), G.money, buy, showHelp); }
+  // kleine Anleitung zu einem freigeschalteten Teil
+  function showHelp(id, fresh) {
+    const u = UP[id]; if (!u || !u.help) return;
+    $('info-k').textContent = fresh ? 'NEU FREIGESCHALTET' : 'ANLEITUNG';
+    $('info-t').textContent = u.name;
+    const ul = $('info-l'); ul.innerHTML = '';
+    u.help.forEach(t => { const li = document.createElement('li'); li.textContent = t; ul.appendChild(li); });
+    showEl('info', true);
+  }
+  function hideHelp() { showEl('info', false); }
   function buy(id) {
     const u = UP[id], lv = G.up[id];
     if (!u || lv >= u.max) return;
@@ -418,10 +443,10 @@
     G.money -= cost; G.shown = G.money; G.up[id] = lv + 1;
     A.play('buy');
     if (id === 'repair') V.setRepaired(true);
-    if (id === 'jet') UI.toast('Jetpack: Leertaste in der Luft halten = hoch, C halten = runter.', 'gold', 7);
     if (id === 'shovel' || id === 'vac' || id === 'xl') setTool(id, true);
     if (id === 'buggy') { BG.setOwned(true); BG.place(BG.park.x, BG.park.z, BG.park.heading); UI.toast('Dein Mondbuggy steht neben der Basis bereit!', 'gold', 5); }
     renderShop(); UI.money(G.money, true); save();
+    if (u.help && (lv === 0)) showHelp(id, true);
   }
   function openShop() { setState('shop'); A.play('click'); if (!TEST && document.pointerLockElement) document.exitPointerLock(); }
   function closeShop() {
@@ -720,9 +745,11 @@
 
       // Sektor fertig?
       const pc = D.percentClean();
-      if (!G.stats.sectorDone && pc >= 0.995) {
-        G.stats.sectorDone = true; G.money += 2500; G.stats.earned += 2500;
-        A.play('goal'); UI.toast('SEKTOR 1 IST BLITZBLANK!', 'big', 6); UI.toast('Sektor-Bonus: + 2.500 ¢', 'gold', 6); save();
+      if (!G.stats.sectorDone && pc >= DONE_AT) {
+        G.stats.sectorDone = true;
+        A.play('goal'); UI.toast('SEKTOR 1 IST BLITZBLANK!', 'big', 6);
+        if (!G.stats.bonusPaid) { G.stats.bonusPaid = true; G.money += 2500; G.stats.earned += 2500; UI.toast('Sektor-Bonus: + 2.500 ¢', 'gold', 6); }
+        save();
       }
       W.terrainUniforms.uHint.value = (!G.stats.sectorDone && pc > 0.9) ? U.smoothstep(0.9, 0.95, pc) * 0.9 : 0;
       if (pc > 0.9 && !G.stats.sectorDone && !hintShown) { hintShown = true; UI.toast('Staub-Scanner an: Die letzten Reste leuchten orange.', '', 6); }

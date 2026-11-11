@@ -7,6 +7,7 @@
   const D = {};
   const N = 1024, SIZE = W.DUST_SIZE, CELL = SIZE / N, CELL_AREA = CELL * CELL;
   const CLEAN_R = 74;          // bis hierhin kann geputzt werden
+  const FLOOR = 46;            // darunter ist Staub im Bild nicht mehr zu sehen
   D.N = N; D.KG_PER_M2 = 1.0;  // 1 m² voller Staub = 1 kg
 
   D.data = new Uint8Array(N * N);
@@ -66,6 +67,24 @@
     dirty = true;
   };
 
+  // Unsichtbare Reste entfernen (ältere Spielstände)
+  D.normalize = function () {
+    const d = D.data; let ch = false;
+    for (let k = 0; k < d.length; k++) if (d[k] > 0 && d[k] < FLOOR) { d[k] = 0; ch = true; }
+    if (ch) { D.recount(); dirty = true; }
+  };
+  // Fläche unter einem Bauwerk staubfrei machen. rot = Drehung des Rechtecks; hz = 0 → Kreis mit Radius hx
+  D.clearArea = function (x, z, hx, hz, rot) {
+    const d = D.data, R = Math.max(hx, hz || 0) * 1.5, c = Math.cos(rot || 0), s = Math.sin(rot || 0);
+    const i0 = Math.max(0, Math.floor(toCell(x - R))), i1 = Math.min(N - 1, Math.ceil(toCell(x + R))), j0 = Math.max(0, Math.floor(toCell(z - R))), j1 = Math.min(N - 1, Math.ceil(toCell(z + R)));
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      const dx = (i + 0.5) * CELL - SIZE / 2 - x, dz = (j + 0.5) * CELL - SIZE / 2 - z;
+      const inside = hz ? (Math.abs(dx * c - dz * s) < hx && Math.abs(dx * s + dz * c) < hz) : dx * dx + dz * dz < hx * hx;
+      if (inside) d[j * N + i] = 0;
+    }
+    D.recount(); dirty = true;
+  };
+
   D.recount = function () {
     const d = D.data; let cur = 0;
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
@@ -115,7 +134,7 @@
         let take = base * f;
         take = Math.floor(take + Math.random());
         if (take <= 0) continue;
-        if (take > v) take = v;
+        if (take > v || v - take < FLOOR) take = v;      // kein unsichtbarer Rest bleibt liegen
         d[k] = v - take;
         const gl = g[k] / 255;
         sumG += take * gl; sumN += take * (1 - gl);
