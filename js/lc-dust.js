@@ -155,6 +155,14 @@
     near.x = bx + m.cx; near.z = bz + m.cz; return near;
   };
 
+  // Wie viel Staub (0..1) bzw. Glitzerstaub liegt an einer Stelle?
+  function cellAt(m, wx, wz) {
+    const i = Math.floor(((wx - m.cx) / m.SIZE + 0.5) * N), j = Math.floor(((wz - m.cz) / m.SIZE + 0.5) * N);
+    return i < 0 || j < 0 || i >= N || j >= N ? -1 : j * N + i;
+  }
+  D.amountAt = function (x, z) { const m = mapAt(x, z), k = cellAt(m, x, z); return k < 0 ? 1 : m.data[k] / 255; };
+  D.glitterAt = function (x, z) { const m = mapAt(x, z), k = cellAt(m, x, z); return k < 0 ? 0 : m.glit[k] / 255; };
+
   // Staub im Umkreis wegnehmen. Gibt { n, g } in kg zurück (normaler Staub, Glitzerstaub)
   const res = { n: 0, g: 0 };
   D.suck = function (wx, wz, radius, rate, dt, room) {

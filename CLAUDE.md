@@ -9,7 +9,7 @@ Spielplan (alle Entscheidungen des Nutzers): https://claude.ai/artifact/FeVhH9CZ
 - `js/` – alles hängt am globalen `LC`. Ladereihenfolge steht unten in `index.html`.
   - `lc-util.js` Zufall, Rauschen, Text-Texturen
   - `lc-world.js` Gelände (`heightAt`), Krater, Boden-Shader (Staub/sauber/Glitzer), Himmel, Erde, Sonne, Felsen, Licht
-  - `lc-dust.js` Staubkarte 1024² über 160 m (`suck`, `percentClean`, Speichern als Lauflängen-Kodierung)
+  - `lc-dust.js` Staubkarten je Krater, 1024² (`suck`, `percentOf`, Speichern als Lauflängen-Kodierung)
   - `lc-base.js` Wrack, Staublager, Werkstatt, Landeplatz, Lampen; `colliders`, `points` (Benutzen mit E)
   - `lc-player.js` Laufen, Springen, Jetpack, Kollision
   - `lc-vacuum.js` Handwerkzeuge (Löffel, Schaufel, Sauger, XL) als Modelle in eigener Szene, Schaufeln/Saugen, Partikel, Zielring
@@ -54,13 +54,18 @@ Spielplan (alle Entscheidungen des Nutzers): https://claude.ai/artifact/FeVhH9CZ
 - Jedes freigeschaltete Teil bekommt eine kleine Anleitung: `help: [...]` am Eintrag in `UP` (Fenster nach dem Kauf, später über „Wie funktioniert das?“).
 - Sektor gilt erst ab `DONE_AT` (Anzeige 100 %) als fertig; bis dahin leuchten Reste orange (`uHint`). Unter Bauten liegt kein Staub (`D.clearArea`), der Boden ist dort eben (`W.addFlat`).
 - Rest-Finder: ab 98 % (`REST_AT`) zeigen Pfeile, Lichtsäulen und Ringe auf der Karte die letzten Staubflecken (`D.rests`, `updateRests` in lc-main.js, `LC.Map.rests`).
-- Sektoren: `W.SECTORS` (lc-world.js). `setupSector(n)` in lc-main.js baut Gelände, Felsen, Bauten und Karte um; `enterSector(n)` nimmt Staubkarte
-  (`D.leave/enter`, Zwischenlager `D.stash`) und Säcke mit. Bauten von Sektor 1 hängen an `B.root1`, der Außenposten an `B.root2`.
-  Hindernisse/Benutzen-Punkte je Sektor: `B.cols`, `B.pts`. Tunnel: `B.portals`, Fahrt: `travel()`. Der Buggy merkt sich seinen Sektor (`BG.sec`).
-- Putzroboter (seit 0.7.0): frei ab Sektor 1 blitzblank (`cond: 'sectorDone'`), arbeiten nur im aktiven Sektor; im Mehrspieler rechnet sie der Gastgeber (`RB.net/netApply` in `w`), nur er packt sie ein.
+- OFFENE WELT (seit 0.9.0): beide Krater liegen in EINEM Gelände, alles in Welt-Koordinaten. Mittelpunkte `W.C[1] = (0,0)`, `W.C[2] = (60,-260)`;
+  dazwischen der Pass `W.PASS` (Schlucht, `a` → `b`, halbe Breite `w`). `W.heightAt` mischt die zwei Krater (`secH`) und schneidet den Pass ein.
+  `W.secAt(x,z)` / `W.side(x,z)`: Trennlinie zwischen den Kratern. `W.inside` / `W.clamp(p, rand)`: erlaubtes Gebiet (Krater 1, und wenn `W.open`: Pass + Krater 2).
+  Zwei Gelände-Gitter (`W.terrains[n]`, Uniforms `W.tu[n]`), jedes zeichnet nur seine Seite der Trennlinie (discard im Shader). Zwei Staubkarten `D.maps[n]`
+  (immer beide aktiv; `D.suck/clearArea/nearest/rests` nehmen Welt-Koordinaten, `D.serialize(n)`, `D.deserialize(n, str)`, `D.percentOf(n)`).
+  „Aktueller Sektor“ (`W.sec`, `G.sec`) = der Krater, in dem der Spieler steht (`setSec` in lc-main.js; steuert Anzeige, Karte, Wegweiser, Sonnenschatten).
+  Die Karte zeigt den aktuellen Krater (lc-map.js: `OX/OZ`). Das Upgrade `tunnel` heißt jetzt „Pass nach Sektor 2“ und öffnet das Tor (`B.setGate`, `openPass`).
+  Alte Spielstände (`gv` < 3) werden beim Laden verschoben (Sektor-2-Koordinaten + `W.C[2]`). Krater-Listen, Flächen (`W.addFlat(…, n)`) sind relativ zum Krater.
+- Putzroboter (seit 0.7.0): frei ab Sektor 1 blitzblank (`cond: 'sectorDone'`), arbeiten überall (Abgabe am Lager des Kraters, in dem sie stehen); im Mehrspieler rechnet sie der Gastgeber (`RB.net/netApply` in `w`), nur er packt sie ein.
 - Staub ist eine sichtbare Schicht: der Boden-Shader hebt staubige Stellen um `uThick` (0,24 m) an. Start-Animation: `#loading` in index.html (reines CSS).
 - Mitfahren im Buggy (Mehrspieler): `riding` in lc-main.js, Merker 16 im Spieler-Zustand; der Beifahrer hat den Bordsauger (saugt in den Laderaum).
-- Als Nächstes vom Nutzer gewünscht (11.11.): offene Welt statt Tunnel-Teleport (ein zusammenhängendes Gelände, ersetzt auch „einzeln den Sektor wechseln“), Schwebegleiter (kaufbar, Pilot + Mitflieger, einer putzt aus der Luft), Tag/Nacht und Mondstürme, Bau-Hammer mit Bau-Menü (u. a. Glasröhren, die Staub sichtbar zum Verkauf leiten).
+- Als Nächstes vom Nutzer gewünscht (11.11., offene Welt ist fertig): Schwebegleiter (kaufbar, Pilot + Mitflieger, einer putzt aus der Luft), Tag/Nacht und Mondstürme, Bau-Hammer mit Bau-Menü (u. a. Glasröhren, die Staub sichtbar zum Verkauf leiten).
 - Reihenfolge, die der Nutzer will: (Mehrspieler und Putzroboter sind fertig,) Automatisierung (Luftkanäle, Staubpresse, Drohnen), Rakete als echtes Ziel, eigene Gebäude an der Basis bauen.
 - Noch nicht gebaut (siehe Spielplan): Gleiter, Raumschiff, Luftkanäle, Staubpresse, Drohnen,
   Händler mit schwankenden Preisen, Hangar/Garage/Solarpark, Rakete als Spielziel, Handy-Steuerung.
