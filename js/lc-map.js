@@ -134,6 +134,7 @@
       if (labels) dot(st.x, st.z, '#e0aa22', 3, W.sec === 1 ? 'Fahrzeug-Entladung' : 'Außenposten: Staub-Annahme');
       if (BGm.here()) dot(BGm.pos.x, BGm.pos.z, '#59f08f', labels ? 6 : 4.5, 'Buggy', 'sq');
     }
+    if (LC.Glider && LC.Glider.owned) dot(LC.Glider.pos.x, LC.Glider.pos.z, '#7fe9ff', labels ? 6 : 4.5, 'Gleiter', 'sq');
     if (SKm) SKm.list.forEach(k => dot(k.x, k.z, '#d8b98a', labels ? 3.5 : 2.6));
     if (LC.Robots) LC.Robots.list.forEach(r => {
       if (r.packed) return;

@@ -370,6 +370,9 @@
     if (MP.host) { if (MP.drv === 'H') MP.drv = null; pushWorld(); }
     else N.toHost({ t: 'bout', b: [BG.pos.x, BG.pos.z, BG.heading] });
   };
+  MP.gdrv = null;
+  MP.tryFly = function () { return true; };
+  MP.leftGlider = function () {};
   // Säcke
   MP.sackThrow = function (from, dir, n, g) { N.toHost({ t: 'sk+', p: [+from.x.toFixed(2), +from.y.toFixed(2), +from.z.toFixed(2)], d: [dir.x, dir.z], n, g }); };
   MP.sackAdded = function (s, from, dir) { if (MP.host) N.toGuest(null, { t: 'sk+', id: s.id, p: [from.x, from.y, from.z], d: [dir.x, dir.z], n: s.n, g: s.g }); };
