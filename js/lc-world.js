@@ -250,13 +250,14 @@
     mat.envMapIntensity = 0;
     const uni = {
       dustMap: { value: dustTex }, glitMap: { value: glitTex }, noiseTex: { value: noiseTex },
-      uTime: { value: 0 }, uDustSize: { value: W.DUST_SIZE }, uHint: { value: 0 }, uClean: { value: W.CLEAN }, uTint: { value: new THREE.Vector3(1, 1, 1) }
+      uTime: { value: 0 }, uDustSize: { value: W.DUST_SIZE }, uHint: { value: 0 }, uThick: { value: 0.24 }, uClean: { value: W.CLEAN }, uTint: { value: new THREE.Vector3(1, 1, 1) }
     };
     W.terrainUniforms = uni;
     mat.onBeforeCompile = function (sh) {
       Object.assign(sh.uniforms, uni);
-      sh.vertexShader = 'varying vec3 vWPos;\n' + sh.vertexShader.replace('#include <begin_vertex>',
-        '#include <begin_vertex>\n vWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+      // Staub ist eine Schicht: wo er liegt, wird der Boden ein Stück angehoben
+      sh.vertexShader = 'varying vec3 vWPos; uniform sampler2D dustMap; uniform float uDustSize; uniform float uThick;\n' + sh.vertexShader.replace('#include <begin_vertex>',
+        '#include <begin_vertex>\n transformed.y += smoothstep(0.22, 0.62, texture2D(dustMap, position.xz / uDustSize + 0.5).r) * uThick;\n vWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
       sh.fragmentShader = [
         'uniform sampler2D dustMap; uniform sampler2D glitMap; uniform sampler2D noiseTex;',
         'uniform float uTime; uniform float uDustSize; uniform float uHint; uniform float uClean; uniform vec3 uTint; varying vec3 vWPos;'
@@ -278,7 +279,11 @@
           'dustCol = mix(dustCol, glitCol, lcGlit);',
           // dünner Staubschleier am Rand geputzter Flächen
           'float lcVeil = smoothstep(0.0, 0.30, dRaw) * (1.0 - lcDust) * 0.35;',
-          'diffuseColor.rgb = mix(mix(cleanCol, dustCol * 2.2, lcVeil), dustCol, lcDust);'
+          'diffuseColor.rgb = mix(mix(cleanCol, dustCol * 2.2, lcVeil), dustCol, lcDust);',
+          // Kante der Staubschicht: dunkle Fuge unten, heller Grat oben
+          'float lcRim = lcDust * (1.0 - lcDust) * 4.0, lcNearE = 1.0 - smoothstep(30.0, 90.0, lcCamD);',
+          'diffuseColor.rgb *= 1.0 - 0.62 * lcRim * (1.0 - lcDust) * lcNearE;',
+          'diffuseColor.rgb += dustCol * 1.6 * smoothstep(0.55, 0.95, lcDust) * (1.0 - smoothstep(0.95, 1.0, lcDust)) * lcNearE;'
         ].join('\n'))
         .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = mix(0.58, 1.0, lcDust);')
         .replace('#include <aomap_fragment>', '#include <aomap_fragment>\n reflectedLight.directSpecular *= mix(1.0, 0.08, lcDust);')

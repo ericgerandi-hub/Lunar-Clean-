@@ -110,6 +110,15 @@
         p.x = BG.pos.x; p.z = BG.pos.z; p.shadow.visible = false;
         continue;
       }
+      if ((p.flags & 16) && BG.here()) {
+        // fährt mit: sitzt rechts und richtet den Bordsauger aus
+        const sh = Math.sin(BG.heading), ch = Math.cos(BG.heading);
+        av.root.position.set(BG.pos.x + ch * 0.62 + sh * 0.25, BG.pos.y + 0.78, BG.pos.z - sh * 0.62 + ch * 0.25); av.root.rotation.y = p.yaw;
+        AV.pose(av, 'sit', 1, 10); av.body.rotation.x = 0; av.tool.visible = true;
+        av.aR.g.rotation.set(1.0, 0, 0.1); av.aR.fore.rotation.set(0.3, 0, 0); av.head.rotation.x = U.clamp(p.pitch, -0.9, 0.9) * 0.7;
+        p.x = BG.pos.x; p.z = BG.pos.z; p.shadow.visible = false;
+        continue;
+      }
       av.root.position.set(p.x, p.y, p.z); av.root.rotation.y = p.yaw;
       const gy = B.groundAt(p.x, p.z), air = p.y - gy;
       if (p.emote >= 0 && AV.EMOTES[p.emote]) {

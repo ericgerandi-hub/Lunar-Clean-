@@ -207,7 +207,26 @@
 
   @media (max-height: 600px) { #menu { padding-bottom: 5vh; } #menu h1 { font-size: 64px; } #menu .how { display: none; } #menu .tag { margin: 10px 0 16px; } }
   #loading { position: fixed; inset: 0; background: #000; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 14px; letter-spacing: .3em; font-size: 14px; color: var(--mut); z-index: 10; }
-  #loading b { font-size: 34px; color: #fff; letter-spacing: .2em; }
+  #loading { overflow: hidden; transition: opacity .8s ease; cursor: pointer; }
+  #loading.out { opacity: 0; pointer-events: none; }
+  #loading .stars { position: absolute; inset: 0; background-image: radial-gradient(1.2px 1.2px at 12% 18%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 28% 62%, #cfe 50%, transparent 51%), radial-gradient(1.4px 1.4px at 44% 12%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 61% 34%, #fff 50%, transparent 51%), radial-gradient(1.3px 1.3px at 77% 20%, #ffe 50%, transparent 51%), radial-gradient(1px 1px at 88% 55%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 7% 78%, #fff 50%, transparent 51%), radial-gradient(1.2px 1.2px at 93% 9%, #cdf 50%, transparent 51%), radial-gradient(1px 1px at 36% 30%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 68% 8%, #fff 50%, transparent 51%), radial-gradient(1.1px 1.1px at 52% 48%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 19% 42%, #fff 50%, transparent 51%); opacity: 0; animation: spl-in 1.6s .1s ease forwards; }
+  #loading .moon { position: absolute; left: 50%; bottom: -118vmin; width: 150vmin; height: 150vmin; margin-left: -75vmin; border-radius: 50%; animation: spl-rise 2.6s cubic-bezier(.2, .7, .2, 1) forwards; }
+  #loading .moon i { position: absolute; inset: 0; border-radius: 50%; }
+  #loading .moon .dusty { background: radial-gradient(circle at 30% 12%, #6b5a47 0, #4a3d30 34%, #2a221b 70%, #15110d 100%); box-shadow: 0 0 9vmin rgba(180, 150, 110, .22); }
+  #loading .moon .clean { background: radial-gradient(circle at 30% 12%, #fbfdff 0, #cfd6e0 30%, #8d96a6 66%, #4a5261 100%); box-shadow: 0 0 12vmin rgba(160, 220, 255, .55); clip-path: inset(0 100% 0 0); animation: spl-wipe 1.7s 1.25s cubic-bezier(.55, 0, .25, 1) forwards; }
+  #loading .moon .cr { background: radial-gradient(circle at 38% 9%, rgba(0, 0, 0, .28) 0, rgba(0, 0, 0, .28) 2.2%, transparent 2.4%), radial-gradient(circle at 55% 6%, rgba(0, 0, 0, .22) 0, rgba(0, 0, 0, .22) 1.4%, transparent 1.6%), radial-gradient(circle at 64% 13%, rgba(0, 0, 0, .25) 0, rgba(0, 0, 0, .25) 3%, transparent 3.2%), radial-gradient(circle at 24% 17%, rgba(0, 0, 0, .2) 0, rgba(0, 0, 0, .2) 1.8%, transparent 2%), radial-gradient(circle at 47% 17%, rgba(0, 0, 0, .18) 0, rgba(0, 0, 0, .18) 1.1%, transparent 1.3%); }
+  #loading .beam { position: absolute; left: -30vw; top: 0; bottom: 0; width: 18vw; background: linear-gradient(90deg, transparent, rgba(120, 225, 255, .0) 20%, rgba(150, 235, 255, .5) 50%, rgba(255, 255, 255, .0) 80%, transparent); filter: blur(10px); transform: skewX(-14deg); animation: spl-beam 1.7s 1.2s cubic-bezier(.55, 0, .25, 1) forwards; mix-blend-mode: screen; }
+  #loading .t { position: relative; display: flex; flex-direction: column; align-items: center; gap: 16px; margin-top: -16vh; }
+  #loading b { font-size: clamp(40px, 9vw, 120px); color: #fff; letter-spacing: .5em; padding-left: .5em; font-weight: 700; opacity: 0; filter: blur(14px); animation: spl-title 1.5s .5s cubic-bezier(.2, .7, .2, 1) forwards; text-shadow: 0 0 40px rgba(120, 220, 255, .35); white-space: nowrap; }
+  #loading span { opacity: 0; animation: spl-in .9s 1.7s ease forwards; color: var(--cy); font-size: clamp(11px, 1.3vw, 15px); }
+  #loading em { display: block; width: min(300px, 50vw); height: 2px; background: rgba(255, 255, 255, .12); position: relative; overflow: hidden; opacity: 0; animation: spl-in .6s 1.2s ease forwards; }
+  #loading em::after { content: ''; position: absolute; inset: 0; background: var(--cy); transform: translateX(-100%); animation: spl-bar 2.2s 1.2s ease-in-out forwards; }
+  @keyframes spl-in { to { opacity: 1; } }
+  @keyframes spl-rise { from { bottom: -150vmin; } to { bottom: -118vmin; } }
+  @keyframes spl-wipe { to { clip-path: inset(0 0 0 0); } }
+  @keyframes spl-beam { to { left: 112vw; } }
+  @keyframes spl-title { to { opacity: 1; filter: blur(0); letter-spacing: .2em; padding-left: .2em; } }
+  @keyframes spl-bar { to { transform: translateX(0); } }
 </style>
 </head>
 <body>
@@ -334,27 +353,27 @@
 
 <div id="info" class="hidden"><div class="box panel"><div class="k" id="info-k">NEU FREIGESCHALTET</div><h2 id="info-t"></h2><ul id="info-l"></ul><button id="btn-info" class="pri">Verstanden</button></div></div>
 
-<div id="loading"><b>LUNAR CLEAN</b><span>MONDOBERFLÄCHE WIRD VERSTAUBT …</span></div>
+<div id="loading"><div class="stars"></div><div class="moon"><i class="dusty"></i><i class="clean"></i><i class="cr"></i></div><div class="beam"></div><div class="t"><b>LUNAR CLEAN</b><em></em><span>EIN MOND. SEHR VIEL STAUB.</span></div></div>
 
 <script src="lib/three.min.js"></script>
-<script src="js/lc-util.js?v=0.7.0"></script>
-<script src="js/lc-world.js?v=0.7.0"></script>
-<script src="js/lc-dust.js?v=0.7.0"></script>
-<script src="js/lc-base.js?v=0.7.0"></script>
-<script src="js/lc-audio.js?v=0.7.0"></script>
-<script src="js/lc-player.js?v=0.7.0"></script>
-<script src="js/lc-vacuum.js?v=0.7.0"></script>
-<script src="js/lc-post.js?v=0.7.0"></script>
-<script src="js/lc-sacks.js?v=0.7.0"></script>
-<script src="js/lc-buggy.js?v=0.7.0"></script>
-<script src="js/lc-robots.js?v=0.7.0"></script>
-<script src="js/lc-map.js?v=0.7.0"></script>
-<script src="js/lc-avatar.js?v=0.7.0"></script>
-<script src="js/lc-globe.js?v=0.7.0"></script>
-<script src="js/lc-cutscene.js?v=0.7.0"></script>
-<script src="js/lc-ui.js?v=0.7.0"></script>
-<script src="js/lc-net.js?v=0.7.0"></script>
-<script src="js/lc-mp.js?v=0.7.0"></script>
-<script src="js/lc-main.js?v=0.7.0"></script>
+<script src="js/lc-util.js?v=0.8.0"></script>
+<script src="js/lc-world.js?v=0.8.0"></script>
+<script src="js/lc-dust.js?v=0.8.0"></script>
+<script src="js/lc-base.js?v=0.8.0"></script>
+<script src="js/lc-audio.js?v=0.8.0"></script>
+<script src="js/lc-player.js?v=0.8.0"></script>
+<script src="js/lc-vacuum.js?v=0.8.0"></script>
+<script src="js/lc-post.js?v=0.8.0"></script>
+<script src="js/lc-sacks.js?v=0.8.0"></script>
+<script src="js/lc-buggy.js?v=0.8.0"></script>
+<script src="js/lc-robots.js?v=0.8.0"></script>
+<script src="js/lc-map.js?v=0.8.0"></script>
+<script src="js/lc-avatar.js?v=0.8.0"></script>
+<script src="js/lc-globe.js?v=0.8.0"></script>
+<script src="js/lc-cutscene.js?v=0.8.0"></script>
+<script src="js/lc-ui.js?v=0.8.0"></script>
+<script src="js/lc-net.js?v=0.8.0"></script>
+<script src="js/lc-mp.js?v=0.8.0"></script>
+<script src="js/lc-main.js?v=0.8.0"></script>
 </body>
 </html>

@@ -58,6 +58,9 @@ Spielplan (alle Entscheidungen des Nutzers): https://claude.ai/artifact/FeVhH9CZ
   (`D.leave/enter`, Zwischenlager `D.stash`) und Säcke mit. Bauten von Sektor 1 hängen an `B.root1`, der Außenposten an `B.root2`.
   Hindernisse/Benutzen-Punkte je Sektor: `B.cols`, `B.pts`. Tunnel: `B.portals`, Fahrt: `travel()`. Der Buggy merkt sich seinen Sektor (`BG.sec`).
 - Putzroboter (seit 0.7.0): frei ab Sektor 1 blitzblank (`cond: 'sectorDone'`), arbeiten nur im aktiven Sektor; im Mehrspieler rechnet sie der Gastgeber (`RB.net/netApply` in `w`), nur er packt sie ein.
+- Staub ist eine sichtbare Schicht: der Boden-Shader hebt staubige Stellen um `uThick` (0,24 m) an. Start-Animation: `#loading` in index.html (reines CSS).
+- Mitfahren im Buggy (Mehrspieler): `riding` in lc-main.js, Merker 16 im Spieler-Zustand; der Beifahrer hat den Bordsauger (saugt in den Laderaum).
+- Als Nächstes vom Nutzer gewünscht (11.11.): offene Welt statt Tunnel-Teleport (ein zusammenhängendes Gelände, ersetzt auch „einzeln den Sektor wechseln“), Schwebegleiter (kaufbar, Pilot + Mitflieger, einer putzt aus der Luft), Tag/Nacht und Mondstürme, Bau-Hammer mit Bau-Menü (u. a. Glasröhren, die Staub sichtbar zum Verkauf leiten).
 - Reihenfolge, die der Nutzer will: (Mehrspieler und Putzroboter sind fertig,) Automatisierung (Luftkanäle, Staubpresse, Drohnen), Rakete als echtes Ziel, eigene Gebäude an der Basis bauen.
 - Noch nicht gebaut (siehe Spielplan): Gleiter, Raumschiff, Luftkanäle, Staubpresse, Drohnen,
   Händler mit schwankenden Preisen, Hangar/Garage/Solarpark, Rakete als Spielziel, Handy-Steuerung.

@@ -4,7 +4,7 @@
    ========================================================= */
 (function (LC) {
   const U = LC.U, W = LC.World, D = LC.Dust, B = LC.Base, PL = LC.Player, V = LC.Vacuum, P = LC.Post, A = LC.Audio, UI = LC.UI, SK = LC.Sacks, BG = LC.Buggy, AV = LC.Avatar, GL = LC.Globe, CS = LC.Cutscene, MP = LC.MP, RB = LC.Robots;
-  const VERSION = '0.7.0';                 // nach jeder Änderung hochzählen
+  const VERSION = '0.8.0';                 // nach jeder Änderung hochzählen
   const SAVE_KEY = 'lunarclean_save_v1', SET_KEY = 'lunarclean_settings_v1';
   const DONE_AT = 0.9995;                  // Sektor gilt erst als fertig, wenn die Anzeige 100 % zeigt
   const PRICE_N = 2, PRICE_G = 15;         // ¢ pro kg: normaler Staub / Glitzerstaub
@@ -202,7 +202,7 @@
     shadow: () => { shadowFrames = 2; },
     // eigener Zustand für die Mitspieler: [x, y, z, Blick, Neigung, Merker, Werkzeug, Emote, Emote-Zeit]
     pstate: () => [+PL.pos.x.toFixed(2), +PL.pos.y.toFixed(2), +PL.pos.z.toFixed(2), +PL.yaw.toFixed(3), +PL.pitch.toFixed(2),
-      (state === 'play' && !BG.driving && V.intensity > 0.2 ? 1 : 0) | (PL.jetting ? 2 : 0) | (PL.crouch ? 4 : 0) | (BG.driving ? 8 : 0),
+      (state === 'play' && !BG.driving && V.intensity > 0.2 ? 1 : 0) | (PL.jetting ? 2 : 0) | (PL.crouch ? 4 : 0) | (BG.driving ? 8 : 0) | (riding ? 16 : 0),
       MP.TOOL_IDS.indexOf(G.tool), emote ? AV.EMOTES.findIndex(e => e.id === emote.id) : -1, emote ? +emote.t.toFixed(2) : 0],
     snapshot: () => ({ sec: G.sec, dust: D.serialize(), sacks: SK.netList() }),
     // Gastgeber kauft im Auftrag eines Gastes
@@ -211,7 +211,7 @@
     applySnap: (kind, sec, dust, sacks, eco) => {
       if (kind === 'sync') { D.deserialize(dust); return; }
       if (BG.driving) { BG.driving = false; BG.speed = 0; BG.suck = 0; A.setBuggy(false, 0); }
-      selling = null; BG.unloading = false;
+      selling = null; BG.unloading = false; riding = false;
       if (kind === 'join') { MP.wasGuest = true; RB.clear(); freshState(); G.stats.intro = G.stats.mapSeen = G.stats.emoted = true; BG.setOwned(false); BG.load.n = BG.load.g = 0; D.stash = {}; D.pc = {}; SK.stash = {}; }
       if (W.sec !== sec) setupSector(sec);
       D.configure(); if (!D.deserialize(dust)) D.reset();
@@ -361,7 +361,10 @@
     UI.el['btn-play'].textContent = hasSave() ? 'Weiterspielen' : 'Spielen';
     UI.show('btn-new', hasSave());
     setState('menu');
-    UI.el.loading.classList.add('hidden');
+    // Start-Animation zu Ende laufen lassen (Klick überspringt sie)
+    const ld = UI.el.loading, done = () => { ld.classList.add('out'); setTimeout(() => ld.classList.add('hidden'), 850); };
+    if (TEST) ld.classList.add('hidden');
+    else { const tm = setTimeout(done, Math.max(300, 3700 - performance.now())); ld.addEventListener('click', () => { clearTimeout(tm); done(); }); }
     lastT = performance.now();
     requestAnimationFrame(frame);
   }
@@ -767,6 +770,18 @@
     robotCtx.sec = G.sec; robotCtx.sim = !MP.guest; robotCtx.time = time; robotCtx.hub = B.points.find(p => p.id === 'silo' || p.id === 'post') || LC.Map.home;
     RB.update(dt, robotCtx);
   }
+  // Mehrspieler: mitfahren und den Bordsauger bedienen, während ein anderer fährt
+  let riding = false;
+  function startRide() {
+    riding = true; fire = false; PL.sprint = PL.crouch = false; V.setTool('vac'); A.play('click');
+    UI.toast('Du fährst mit. Linke Maustaste: Bordsauger – er saugt weit und direkt in den Laderaum. E: aussteigen.', '', 7);
+  }
+  function stopRide(quiet) {
+    if (!riding) return;
+    riding = false; V.setTool(G.tool);
+    if (BG.here()) { const ch = Math.cos(BG.heading), sh = Math.sin(BG.heading); PL.reset(BG.pos.x + ch * 2.3, BG.pos.z - sh * 2.3, PL.yaw); }
+    if (!quiet) A.play('click');
+  }
   function enterBuggy() {
     BG.driving = true; BG.lookYaw = 0; BG.lookPitch = -0.08; fire = false; A.play('click');
     if (!driveHint) { driveHint = true; UI.toast('W/S Gas und Bremse · A/D lenken · Linke Maustaste saugen · E aussteigen', '', 7); }
@@ -808,6 +823,7 @@
   }
   function interact() {
     if (selling) return;
+    if (riding) { stopRide(); return; }
     if (BG.driving) {
       if (atTunnel()) useTunnel();
       else if (BG.atStation() && BG.total() > 0.05) {
@@ -825,7 +841,7 @@
       if (nearPoint.id === 'post') sellTo.set(nearPoint.x, nearPoint.y - 1.0, nearPoint.z); else sellTo.copy(B.siloNozzle);
     }
     else if (atTunnel()) useTunnel();
-    else if (nearBuggy) { if (MP.tryDrive()) enterBuggy(); }
+    else if (nearBuggy) { if (MP.active && MP.drv && MP.drv !== MP.id) startRide(); else if (MP.tryDrive()) enterBuggy(); }
     else if (nearRobot && !nearSack) { RB.pack(nearRobot); A.play('click'); UI.toast('Putzroboter eingepackt' + (nearRobot.n + nearRobot.g > 1 ? ' (mit ' + UI.n0(nearRobot.n + nearRobot.g) + ' kg Staub an Bord)' : '') + ' – R setzt ihn wieder ab.', '', 4); save(); }
     else if (nearSack) {
       if (G.carry.length >= SK.CARRY) { A.play('deny'); UI.toast('Mehr als ' + SK.CARRY + ' Säcke kannst du nicht tragen.', '', 2.5); return; }
@@ -988,7 +1004,13 @@
         if (emoteMenu) { emoteMenuT -= dt; if (emoteMenuT <= 0) setEmoteMenu(false); }
         pcfg.jet = G.up.jet > 0; pcfg.fuelTime = val('fuel');
         if (emote) { PL.mdx = PL.mdy = 0; PL.lookDX = PL.lookDY = 0; } else PL.update(dt, pcfg, evs);
-        if (BG.here()) {     // nicht durch den geparkten Buggy laufen
+        if (riding) {
+          if (!BG.here()) stopRide(true);
+          else {      // sitzt rechts neben dem Fahrer und fährt mit
+            const ch = Math.cos(BG.heading), sh = Math.sin(BG.heading);
+            PL.pos.set(BG.pos.x + ch * 0.62 + sh * 0.25, BG.pos.y + 0.72, BG.pos.z - sh * 0.62 + ch * 0.25); PL.vel.set(0, 0, 0); PL.onGround = true; PL.jetting = false;
+          }
+        } else if (BG.here()) {     // nicht durch den geparkten Buggy laufen
           const dx = PL.pos.x - BG.pos.x, dz = PL.pos.z - BG.pos.z, d2 = dx * dx + dz * dz, rr = 1.95;
           if (d2 < rr * rr && d2 > 1e-6 && PL.pos.y - BG.pos.y < 2.3) { const d = Math.sqrt(d2); PL.pos.x = BG.pos.x + dx / d * rr; PL.pos.z = BG.pos.z + dz / d * rr; }
         }
@@ -1017,7 +1039,7 @@
 
       // Werkzeug in der Hand
       const isVac = G.tool === 'vac' || G.tool === 'xl';
-      hoseOn = BG.here() && !driving && isVac && BG.room() > 0.01 && Math.hypot(PL.pos.x - BG.pos.x, PL.pos.z - BG.pos.z) < BG.HOSE_RANGE;
+      hoseOn = BG.here() && !driving && (isVac || riding) && BG.room() > 0.01 && Math.hypot(PL.pos.x - BG.pos.x, PL.pos.z - BG.pos.z) < BG.HOSE_RANGE;
       if (G.tool === 'spoon') { vcfg.kind = 'scoop'; vcfg.radius = 0.3; vcfg.rate = 0.95; vcfg.period = 0.42; vcfg.reach = 4.4; }
       else if (G.tool === 'shovel') { vcfg.kind = 'scoop'; vcfg.radius = 0.52; vcfg.rate = 0.95; vcfg.period = 0.6; vcfg.reach = 4.7; }
       else {
@@ -1025,7 +1047,8 @@
         vcfg.kind = 'vac'; vcfg.radius = val('width') * (xl ? 1.6 : 1); vcfg.rate = (G.up.repair ? 4.2 : 2.6) * val('power') * (xl ? 1.7 : 1);
         vcfg.reach = 6.2 + G.up.power * 0.6 + (xl ? 1.2 : 0);
       }
-      vcfg.repaired = G.up.repair > 0; vcfg.hidden = driving || !!emote;
+      if (riding) { vcfg.kind = 'vac'; vcfg.radius = 1.9 + G.up.bhead * 0.4; vcfg.rate = 7; vcfg.reach = 15; }      // Bordsauger
+      vcfg.repaired = G.up.repair > 0 || riding; vcfg.hidden = driving || !!emote;
       vcfg.room = hoseOn ? BG.room() : cap() - tankTotal(); vcfg.fill = tankTotal() / cap();
       vcfg.glitRatio = tankTotal() > 0 ? G.tank.g / tankTotal() : 0; vcfg.sunlit = sunlit;
       V.update(dt, time, camera, fire && !selling && !emote, vcfg, hoseOn ? bcb.onSuck : onSuck);
@@ -1055,7 +1078,8 @@
       else if (nearPoint && nearPoint.id === 'shop') UI.prompt('<kbd>E</kbd>Werkstatt öffnen');
       else if ((!nearPoint || nearPoint.id === 'tunnel') && atTunnel()) UI.prompt(MP.guest ? 'Tunnel – der Gastgeber fährt durch, alle kommen mit' : G.up.tunnel ? '<kbd>E</kbd>Durch den Tunnel nach ' + (G.sec === 1 ? 'Sektor 2' : 'Sektor 1') + ' gehen' : 'Tunnel nach Sektor 2 – noch gesperrt (Werkstatt)');
       else if (nearPoint && nearPoint.id !== 'tunnel') UI.prompt(tankTotal() + G.carry.length >= 0.05 ? '<kbd>E</kbd>Staub ' + (nearPoint.id === 'post' ? 'am Außenposten abgeben' : 'ins Staublager geben') + '<em>+ ' + UI.n0(Math.round(tankWorth())) + ' ¢</em>' : (nearPoint.id === 'post' ? 'Außenposten' : 'Staublager') + ' – du hast noch keinen Staub dabei');
-      else if (nearBuggy) UI.prompt(MP.active && MP.drv && MP.drv !== MP.id ? 'Buggy – gerade besetzt' : '<kbd>E</kbd>In den Buggy steigen');
+      else if (riding) UI.prompt('<kbd>E</kbd>Aussteigen');
+      else if (nearBuggy) UI.prompt(MP.active && MP.drv && MP.drv !== MP.id ? '<kbd>E</kbd>Mitfahren und den Bordsauger bedienen' : '<kbd>E</kbd>In den Buggy steigen');
       else if (nearSack) UI.prompt('<kbd>E</kbd>Sack aufheben<em>' + UI.n0(nearSack.n + nearSack.g) + ' kg</em>');
       else if (nearRobot) UI.prompt('<kbd>E</kbd>Putzroboter einpacken<em>' + UI.n0(nearRobot.n + nearRobot.g) + ' / ' + RB.CAP + ' kg</em>');
       else if (!BG.driving && !MP.guest && RB.packed().length) UI.prompt('<kbd>R</kbd>Putzroboter absetzen' + (RB.packed().length > 1 ? '<em>' + RB.packed().length + ' im Gepäck</em>' : ''));
