@@ -110,6 +110,29 @@
     D.current = cur;
   };
 
+  // Letzte Staubreste suchen: in 4-m-Feldern zusammengefasst, die nächsten zuerst
+  D.rests = function (px, pz, max) {
+    const BS = 4, nb = Math.ceil(SIZE / BS), sum = new Float32Array(nb * nb), sx = new Float32Array(nb * nb), sz = new Float32Array(nb * nb), d = D.data, R2 = CLEAN_R * CLEAN_R;
+    for (let j = 0; j < N; j++) {
+      const z = (j + 0.5) * CELL - SIZE / 2, bj = Math.min(nb - 1, Math.floor((z + SIZE / 2) / BS)) * nb, row = j * N;
+      for (let i = 0; i < N; i++) {
+        const v = d[row + i]; if (!v) continue;
+        const x = (i + 0.5) * CELL - SIZE / 2; if (x * x + z * z >= R2) continue;
+        const b = bj + Math.min(nb - 1, Math.floor((x + SIZE / 2) / BS));
+        sum[b] += v; sx[b] += v * x; sz[b] += v * z;
+      }
+    }
+    const all = [];
+    for (let b = 0; b < sum.length; b++) if (sum[b] > 0) { const x = sx[b] / sum[b], z = sz[b] / sum[b]; all.push({ x, z, d: Math.hypot(x - px, z - pz), kg: sum[b] / 255 * CELL * CELL * D.KG_PER_M2 }); }
+    all.sort((a, b) => a.d - b.d);
+    // Felder, die dicht beieinander liegen, sind ein Fleck
+    const out = [];
+    all.forEach(r => { for (let i = 0; i < out.length; i++) if (Math.hypot(out[i].x - r.x, out[i].z - r.z) < 6) { out[i].kg += r.kg; return; } out.push(r); });
+    out.total = out.length;
+    if (out.length > max) out.length = max;
+    return out;
+  };
+
   D.percentClean = function () { return D.total ? U.clamp(1 - D.current / D.total, 0, 1) : 0; };
 
   D.amountAt = function (x, z) {

@@ -127,6 +127,14 @@
       if (BGm.here()) dot(BGm.pos.x, BGm.pos.z, '#59f08f', labels ? 6 : 4.5, 'Buggy', 'sq');
     }
     if (SKm) SKm.list.forEach(k => dot(k.x, k.z, '#d8b98a', labels ? 3.5 : 2.6));
+    (M.rests || []).forEach(r => {
+      ctx.save(); ctx.translate(r.x * s, r.z * s);
+      const k = 0.5 + 0.5 * Math.sin(performance.now() / 180), rr = labels ? 9 : 6;
+      ctx.strokeStyle = 'rgba(0,0,0,.8)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, 0, rr + k * 3, 0, 6.283); ctx.stroke();
+      ctx.strokeStyle = '#ff8a1e'; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.arc(0, 0, rr + k * 3, 0, 6.283); ctx.stroke();
+      ctx.fillStyle = '#ffb060'; ctx.beginPath(); ctx.arc(0, 0, 2.2, 0, 6.283); ctx.fill();
+      ctx.restore();
+    });
     if (LC.MP && LC.MP.active) LC.MP.each(p => dot(p.x, p.z, p.css, labels ? 6 : 4.5, p.name));
     if (labels) W.glitterCraters.forEach(c => dot(c.x, c.z + c.R * 0.95, 'rgba(0,0,0,0)', 0, 'Glitzerstaub'));
   }

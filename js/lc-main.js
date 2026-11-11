@@ -4,7 +4,7 @@
    ========================================================= */
 (function (LC) {
   const U = LC.U, W = LC.World, D = LC.Dust, B = LC.Base, PL = LC.Player, V = LC.Vacuum, P = LC.Post, A = LC.Audio, UI = LC.UI, SK = LC.Sacks, BG = LC.Buggy, AV = LC.Avatar, GL = LC.Globe, CS = LC.Cutscene, MP = LC.MP;
-  const VERSION = '0.6.0';                 // nach jeder Änderung hochzählen
+  const VERSION = '0.6.1';                 // nach jeder Änderung hochzählen
   const SAVE_KEY = 'lunarclean_save_v1', SET_KEY = 'lunarclean_settings_v1';
   const DONE_AT = 0.9995;                  // Sektor gilt erst als fertig, wenn die Anzeige 100 % zeigt
   const PRICE_N = 2, PRICE_G = 15;         // ¢ pro kg: normaler Staub / Glitzerstaub
@@ -551,6 +551,54 @@
     });
   }
 
+  // ---------- Rest-Finder: die letzten Staubflecken ----------
+  const REST_AT = 0.98, REST_N = 6;
+  let restT = 0, rests = [], restBeams = null, restEls = null, restSec = 0;
+  function updateRests(dt, pc, open) {
+    const on = open && pc >= REST_AT;
+    if (!restBeams) {
+      restBeams = []; restEls = [];
+      const geo = new THREE.CylinderGeometry(0.07, 0.2, 34, 8, 1, true); geo.translate(0, 17, 0);
+      for (let i = 0; i < REST_N; i++) {
+        const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, 1.25, 0.25), transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+        m.visible = false; m.renderOrder = 4; scene.add(m); restBeams.push(m);
+      }
+      const box = $('rests');
+      for (let i = 0; i < 3; i++) { const e = document.createElement('div'); e.className = 'rest hidden'; e.innerHTML = '<i></i><span></span>'; box.appendChild(e); restEls.push(e); }
+    }
+    if (!on) {
+      if (rests.length) { rests = []; LC.Map.rests = rests; restBeams.forEach(m => { m.visible = false; }); restEls.forEach(e => e.classList.add('hidden')); showEl('rest-n', false); }
+      restT = 0; return;
+    }
+    restT -= dt;
+    if (restT <= 0 || restSec !== G.sec) {
+      restT = 0.6; restSec = G.sec;
+      const px = BG.driving ? BG.pos.x : PL.pos.x, pz = BG.driving ? BG.pos.z : PL.pos.z;
+      rests = D.rests(px, pz, REST_N); LC.Map.rests = rests;
+      for (let i = 0; i < REST_N; i++) { const m = restBeams[i], r = rests[i]; m.visible = !!r; if (r) m.position.set(r.x, W.heightAt(r.x, r.z), r.z); }
+      showEl('rest-n', rests.total > 0);
+      $('rest-n').textContent = rests.total === 1 ? 'Noch 1 Staubrest – folge dem Pfeil' : 'Noch ' + rests.total + ' Staubreste – folge den Pfeilen';
+      if (!restShown[G.sec] && rests.total) { restShown[G.sec] = true; UI.toast('Fast geschafft! Pfeile und Lichtsäulen zeigen dir die letzten Staubreste.', 'gold', 7); }
+    }
+    const pulse = 0.38 + 0.2 * Math.sin(time * 4);
+    restBeams.forEach(m => { m.material.opacity = pulse; });
+    const cx = camera.position.x, cz = camera.position.z;
+    for (let i = 0; i < 3; i++) {
+      const e = restEls[i], r = rests[i];
+      if (!r) { e.classList.add('hidden'); continue; }
+      const dist = Math.hypot(r.x - cx, r.z - cz);
+      toScreen(r.x, W.heightAt(r.x, r.z) + (dist < 6 ? 0.4 : 2.2), r.z);
+      e.classList.remove('hidden'); e.classList.toggle('near', i === 0);
+      // am Bildrand: Pfeil zeigt in die Richtung, sonst nach unten auf die Stelle
+      const ex = scr.x - window.innerWidth / 2, ey = scr.y - window.innerHeight / 2;
+      const edge = Math.abs(ex) > window.innerWidth * 0.455 || Math.abs(ey) > window.innerHeight * 0.425;
+      e.style.transform = 'translate(' + scr.x.toFixed(0) + 'px,' + scr.y.toFixed(0) + 'px) translate(-50%,-50%)';
+      e.firstChild.style.transform = 'rotate(' + (edge ? Math.atan2(ey, ex) - Math.PI / 2 : 0).toFixed(2) + 'rad)';
+      e.lastChild.textContent = dist < 1.5 ? 'HIER' : Math.round(dist) + ' m';
+    }
+  }
+  const restShown = {};
+
   // ---------- Mehrspieler-Fenster ----------
   let mpLost = false;
   function bindMP() {
@@ -990,6 +1038,9 @@
       }
       W.terrainUniforms.uHint.value = (!G.stats[dk] && pc > 0.9) ? U.smoothstep(0.9, 0.95, pc) * 0.9 : 0;
       if (pc > 0.9 && !G.stats[dk] && !hintShown[G.sec]) { hintShown[G.sec] = true; UI.toast('Staub-Scanner an: Die letzten Reste leuchten orange.', '', 6); }
+
+      // Fast fertig: Pfeile und Lichtsäulen zeigen die letzten Staubreste
+      updateRests(dt, pc, !G.stats[dk]);
 
       // Wegweiser zur Basis und zu den eigenen Markierungen
       const hm = LC.Map.home, bd = Math.hypot(PL.pos.x - hm.x, PL.pos.z - hm.z);

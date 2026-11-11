@@ -75,6 +75,12 @@
   @keyframes tout { to { opacity: 0; transform: translateY(-6px); } }
 
   #way { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; transform: translate(-50%, -50%); color: var(--am); font-size: 12px; letter-spacing: .08em; text-shadow: 0 0 6px #000; }
+  .rest { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; color: #ff9a3c; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-shadow: 0 0 6px #000, 0 0 2px #000; opacity: .8; }
+  .rest i { width: 0; height: 0; border-left: 9px solid transparent; border-right: 9px solid transparent; border-top: 16px solid #ff8a1e; filter: drop-shadow(0 0 4px #000) drop-shadow(0 0 6px rgba(255, 130, 20, .8)); }
+  .rest.near { opacity: 1; font-size: 15px; animation: restp 0.9s ease-in-out infinite; }
+  .rest.near i { border-left-width: 14px; border-right-width: 14px; border-top-width: 25px; }
+  @keyframes restp { 50% { filter: brightness(1.5); } }
+  #rest-n { position: absolute; left: 50%; top: 78px; transform: translateX(-50%); color: #ffb060; font-size: 13px; letter-spacing: .08em; text-shadow: 0 0 6px #000, 0 0 2px #000; white-space: nowrap; }
   #way i { width: 13px; height: 13px; border: 2px solid var(--am); transform: rotate(45deg); background: rgba(255, 191, 90, .25); margin-bottom: 4px; }
 
   #mini { position: absolute; right: 22px; top: 20px; width: 176px; height: 176px; border-radius: 50%; border: 1px solid var(--line); box-shadow: 0 0 0 4px rgba(5, 12, 18, .55), 0 0 22px rgba(0, 0, 0, .6); }
@@ -240,6 +246,8 @@
   <div id="warn" class="panel hidden"></div>
   <div id="toasts"></div>
   <div id="way" class="hidden"><i></i><span id="way-d"></span></div>
+  <div id="rests"></div>
+  <div id="rest-n" class="hidden"></div>
   <div id="edges" class="hidden"><div class="scr l"><canvas id="edge-l"></canvas><span>KANTE LINKS<b>▮ SPUR</b></span></div><div class="scr r"><canvas id="edge-r"></canvas><span>KANTE RECHTS<b>▮ SPUR</b></span></div></div>
   <div id="marks"></div>
   <div id="emotes" class="panel hidden"></div>
@@ -329,23 +337,23 @@
 <div id="loading"><b>LUNAR CLEAN</b><span>MONDOBERFLÄCHE WIRD VERSTAUBT …</span></div>
 
 <script src="lib/three.min.js"></script>
-<script src="js/lc-util.js?v=0.6.0"></script>
-<script src="js/lc-world.js?v=0.6.0"></script>
-<script src="js/lc-dust.js?v=0.6.0"></script>
-<script src="js/lc-base.js?v=0.6.0"></script>
-<script src="js/lc-audio.js?v=0.6.0"></script>
-<script src="js/lc-player.js?v=0.6.0"></script>
-<script src="js/lc-vacuum.js?v=0.6.0"></script>
-<script src="js/lc-post.js?v=0.6.0"></script>
-<script src="js/lc-sacks.js?v=0.6.0"></script>
-<script src="js/lc-buggy.js?v=0.6.0"></script>
-<script src="js/lc-map.js?v=0.6.0"></script>
-<script src="js/lc-avatar.js?v=0.6.0"></script>
-<script src="js/lc-globe.js?v=0.6.0"></script>
-<script src="js/lc-cutscene.js?v=0.6.0"></script>
-<script src="js/lc-ui.js?v=0.6.0"></script>
-<script src="js/lc-net.js?v=0.6.0"></script>
-<script src="js/lc-mp.js?v=0.6.0"></script>
-<script src="js/lc-main.js?v=0.6.0"></script>
+<script src="js/lc-util.js?v=0.6.1"></script>
+<script src="js/lc-world.js?v=0.6.1"></script>
+<script src="js/lc-dust.js?v=0.6.1"></script>
+<script src="js/lc-base.js?v=0.6.1"></script>
+<script src="js/lc-audio.js?v=0.6.1"></script>
+<script src="js/lc-player.js?v=0.6.1"></script>
+<script src="js/lc-vacuum.js?v=0.6.1"></script>
+<script src="js/lc-post.js?v=0.6.1"></script>
+<script src="js/lc-sacks.js?v=0.6.1"></script>
+<script src="js/lc-buggy.js?v=0.6.1"></script>
+<script src="js/lc-map.js?v=0.6.1"></script>
+<script src="js/lc-avatar.js?v=0.6.1"></script>
+<script src="js/lc-globe.js?v=0.6.1"></script>
+<script src="js/lc-cutscene.js?v=0.6.1"></script>
+<script src="js/lc-ui.js?v=0.6.1"></script>
+<script src="js/lc-net.js?v=0.6.1"></script>
+<script src="js/lc-mp.js?v=0.6.1"></script>
+<script src="js/lc-main.js?v=0.6.1"></script>
 </body>
 </html>
