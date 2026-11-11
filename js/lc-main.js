@@ -4,7 +4,7 @@
    ========================================================= */
 (function (LC) {
   const U = LC.U, W = LC.World, D = LC.Dust, B = LC.Base, PL = LC.Player, V = LC.Vacuum, P = LC.Post, A = LC.Audio, UI = LC.UI, SK = LC.Sacks, BG = LC.Buggy, AV = LC.Avatar, GL = LC.Globe, CS = LC.Cutscene, MP = LC.MP;
-  const VERSION = '0.6.1';                 // nach jeder Änderung hochzählen
+  const VERSION = '0.6.2';                 // nach jeder Änderung hochzählen
   const SAVE_KEY = 'lunarclean_save_v1', SET_KEY = 'lunarclean_settings_v1';
   const DONE_AT = 0.9995;                  // Sektor gilt erst als fertig, wenn die Anzeige 100 % zeigt
   const PRICE_N = 2, PRICE_G = 15;         // ¢ pro kg: normaler Staub / Glitzerstaub
@@ -665,8 +665,8 @@
       if (u.needs && !G.up[u.needs]) { it.locked = true; it.lockTxt = 'Erst ' + UP[u.needs].name + ' kaufen'; }
       return it;
     });
-    items.push({ id: 'robot', name: 'Putzroboter', desc: 'Saugt ganz von allein rund um die Basis – der erste Schritt zur Automatisierung.', teaser: 'Kommt bald', max: 1, level: 0 });
-    items.push({ id: 'rocket', name: 'Rakete nach Hause', desc: 'Der Grund, warum du das alles machst. Ein Ticket zurück zur Erde.', teaser: '1.000.000 ¢ · noch ein weiter Weg', max: 1, level: 0, goal: true });
+    items.push({ id: 'robot', name: 'Putzroboter', desc: 'Saugt ganz von allein rund um die Basis – der erste Schritt zur Automatisierung.', nowTxt: 'So schaltest du ihn frei: Sektor 1 blitzblank putzen (' + (G.stats.sectorDone ? 'geschafft ✓' : 'du bist bei ' + Math.floor(D.percentOf(1) * 1000) / 10 + ' %') + '), dann für 4.000 ¢ kaufen.', teaser: 'Noch nicht im Spiel · kommt mit dem nächsten Update', max: 1, level: 0 });
+    items.push({ id: 'rocket', name: 'Rakete nach Hause', desc: 'Der Grund, warum du das alles machst. Ein Ticket zurück zur Erde.', nowTxt: 'So bekommst du sie: Sektor 1 und Sektor 2 blitzblank putzen und 1.000.000 ¢ ansparen (du hast ' + UI.n0(Math.floor(G.money)) + ' ¢).', teaser: 'Noch nicht im Spiel · kommt in einem späteren Update', max: 1, level: 0, goal: true });
     return items;
   }
   function renderShop() { UI.shopRender(shopItems(), G.money, buy, showHelp); }
