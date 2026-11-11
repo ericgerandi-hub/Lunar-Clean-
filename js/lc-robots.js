@@ -107,7 +107,7 @@
       const c = cs[k], ex = r.x - c.x, ez = r.z - c.z, rr = c.r + 0.75, d2 = ex * ex + ez * ez;
       if (d2 < rr * rr && d2 > 1e-6) { const d = Math.sqrt(d2); r.x = c.x + ex / d * rr; r.z = c.z + ez / d * rr; }
     }
-    const rad = Math.hypot(r.x, r.z); if (rad > W.LIMIT - 2) { r.x *= (W.LIMIT - 2) / rad; r.z *= (W.LIMIT - 2) / rad; }
+    W.clamp(r, 2);
     r.spd = v;
     return dist;
   }

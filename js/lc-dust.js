@@ -45,6 +45,7 @@
   };
   // Karte des Sektors, in dem der Spieler steht (für Karte und Tests)
   Object.defineProperty(D, 'data', { get: () => cur().data });
+  Object.defineProperty(D, 'glit', { get: () => cur().glit });
 
   function recount(m) {
     const d = m.data, R2 = m.CLEAN_R * m.CLEAN_R; let c = 0;

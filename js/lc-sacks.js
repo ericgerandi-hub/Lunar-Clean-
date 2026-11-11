@@ -67,7 +67,7 @@
       s.vy -= 2.6 * dt;
       s.x += s.vx * dt; s.y += s.vy * dt; s.z += s.vz * dt;
       // nicht in Hindernisse oder über den Kraterrand
-      const r = Math.hypot(s.x, s.z); if (r > W.LIMIT - 1) { s.x *= (W.LIMIT - 1) / r; s.z *= (W.LIMIT - 1) / r; s.vx = s.vz = 0; }
+      if (W.clamp(s, 1)) s.vx = s.vz = 0;
       for (let k = 0; k < B.colliders.length; k++) {
         const c = B.colliders[k], dx = s.x - c.x, dz = s.z - c.z, rr = c.r + 0.35, d2 = dx * dx + dz * dz;
         if (d2 < rr * rr && d2 > 1e-6) { const d = Math.sqrt(d2); s.x = c.x + dx / d * rr; s.z = c.z + dz / d * rr; s.vx *= 0.2; s.vz *= 0.2; }

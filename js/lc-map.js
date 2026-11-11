@@ -6,7 +6,9 @@
   const U = LC.U, W = LC.World, D = LC.Dust, B = LC.Base;
   const M = { open: false };
   const N = 256;
-  let SIZE = W.DUST_SIZE, CLEAN_R = W.CLEAN;      // ändern sich mit dem Sektor (M.reconfigure)
+  // Die Karte zeigt den Krater, in dem man gerade steht. OX/OZ = dessen Mittelpunkt in der Welt;
+  // gezeichnet wird relativ dazu, alle Punkte (Spieler, Marken, Bauten) kommen in Welt-Koordinaten herein.
+  let SIZE = W.DUST_SIZE, CLEAN_R = W.CLEAN, OX = 0, OZ = 0;      // ändern sich mit dem Sektor (M.reconfigure)
   M.home = { x: 0, z: 0 };                          // wohin der gelbe Pfeil der Minimap zeigt
   const MINI = 176, VIEW = 34;         // Größe der Minimap in Pixeln, sichtbarer Radius in Metern
   let img, ictx, idata, shade, mini, mctx, big, bctx, dpr = 1, buildT = 0, bigSize = 600;
@@ -24,7 +26,7 @@
     dpr = Math.min(window.devicePixelRatio || 1, 2);
     mini = document.getElementById('mini'); mini.width = mini.height = Math.round(MINI * dpr); mctx = mini.getContext('2d');
     big = document.getElementById('bigmap-c'); bctx = big.getContext('2d');
-    const toWorld = e => { const r = big.getBoundingClientRect(); return { x: vx + (e.clientX - r.left - r.width / 2) / vs, z: vz + (e.clientY - r.top - r.height / 2) / vs }; };
+    const toWorld = e => { const r = big.getBoundingClientRect(); return { x: OX + vx + (e.clientX - r.left - r.width / 2) / vs, z: OZ + vz + (e.clientY - r.top - r.height / 2) / vs }; };
     big.addEventListener('mousedown', e => { if (e.button === 0) drag = { x: e.clientX, y: e.clientY, moved: 0 }; e.preventDefault(); });
     window.addEventListener('mousemove', e => {
       if (!drag || !M.open) return;
@@ -50,7 +52,8 @@
       e.preventDefault();
       const w = toWorld(e), f = e.deltaY < 0 ? 1.2 : 1 / 1.2, ns = U.clamp(vs * f, minS, 22);
       // um den Mauszeiger herum zoomen
-      vx = U.clamp(w.x - (w.x - vx) * vs / ns, -lim(), lim()); vz = U.clamp(w.z - (w.z - vz) * vs / ns, -lim(), lim()); vs = ns;
+      const lx = w.x - OX, lz = w.z - OZ;
+      vx = U.clamp(lx - (lx - vx) * vs / ns, -lim(), lim()); vz = U.clamp(lz - (lz - vz) * vs / ns, -lim(), lim()); vs = ns;
     }, { passive: false });
     big.addEventListener('contextmenu', e => e.preventDefault());
     M.rebuild();
@@ -58,11 +61,11 @@
 
   // Schattierung des Geländes für den aktiven Sektor berechnen
   M.reconfigure = function () {
-    SIZE = W.DUST_SIZE; CLEAN_R = W.CLEAN;
+    SIZE = W.DUST_SIZE; CLEAN_R = W.CLEAN; OX = W.C[W.sec].x; OZ = W.C[W.sec].z;
     if (!shade) return;
     const c = SIZE / N, sx = W.SUN_DIR.x, sz = W.SUN_DIR.z;
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
-      const x = (i + 0.5) * c - SIZE / 2, z = (j + 0.5) * c - SIZE / 2;
+      const x = OX + (i + 0.5) * c - SIZE / 2, z = OZ + (j + 0.5) * c - SIZE / 2;
       const dx = W.heightAt(x + 0.6, z) - W.heightAt(x - 0.6, z), dz = W.heightAt(x, z + 0.6) - W.heightAt(x, z - 0.6);
       shade[j * N + i] = U.clamp(1 - (dx * sx + dz * sz) * 1.5, 0.45, 1.5);
     }
@@ -105,6 +108,10 @@
       }
       ctx.restore();
     };
+    ctx.save(); ctx.translate(-OX * s, -OZ * s);        // ab hier Welt-Koordinaten
+    // der Pass zum anderen Krater
+    ctx.strokeStyle = W.open ? 'rgba(200,160,255,.5)' : 'rgba(255,90,60,.4)'; ctx.lineWidth = Math.max(3, W.PASS.w * 1.6 * s); ctx.lineCap = 'butt';
+    ctx.beginPath(); ctx.moveTo(W.PASS.a.x * s, W.PASS.a.z * s); ctx.lineTo(W.PASS.b.x * s, W.PASS.b.z * s); ctx.stroke();
     if (W.sec === 1) {
     // Wrack als Strich
     const f = W.furrow, cx = f.b.x - f.dir.x * 3.2, cz = f.b.z - f.dir.z * 3.2;
@@ -119,16 +126,17 @@
     dot(B.silo.x, B.silo.z, '#ffbf5a', labels ? 7 : 5.5, 'Staublager');
     }
     const tp = B.portals[W.sec];
-    dot(tp.x, tp.z, '#c8a0ff', labels ? 6 : 4.5, W.sec === 1 ? 'Tunnel nach Sektor 2' : 'Tunnel zur Basis', 'sq');
+    dot(tp.x, tp.z, '#c8a0ff', labels ? 6 : 4.5, W.sec === 1 ? 'Pass nach Sektor 2' : 'Pass zur Basis', 'sq');
     const BGm = LC.Buggy, SKm = LC.Sacks;
     if (BGm) {
-      ctx.strokeStyle = '#e0aa22'; ctx.lineWidth = 2; ctx.save(); ctx.translate(BGm.station.x * s, BGm.station.z * s); ctx.rotate(-BGm.station.rot); ctx.strokeRect(-2.7 * s, -4 * s, 5.4 * s, 8 * s); ctx.restore();
-      if (labels) dot(BGm.station.x, BGm.station.z, '#e0aa22', 3, W.sec === 1 ? 'Fahrzeug-Entladung' : 'Außenposten: Staub-Annahme');
+      ctx.strokeStyle = '#e0aa22'; ctx.lineWidth = 2; ctx.save(); const st = BGm.stations[W.sec];
+      ctx.translate(st.x * s, st.z * s); ctx.rotate(-st.rot); ctx.strokeRect(-2.7 * s, -4 * s, 5.4 * s, 8 * s); ctx.restore();
+      if (labels) dot(st.x, st.z, '#e0aa22', 3, W.sec === 1 ? 'Fahrzeug-Entladung' : 'Außenposten: Staub-Annahme');
       if (BGm.here()) dot(BGm.pos.x, BGm.pos.z, '#59f08f', labels ? 6 : 4.5, 'Buggy', 'sq');
     }
     if (SKm) SKm.list.forEach(k => dot(k.x, k.z, '#d8b98a', labels ? 3.5 : 2.6));
     if (LC.Robots) LC.Robots.list.forEach(r => {
-      if (r.packed || r.sec !== W.sec) return;
+      if (r.packed) return;
       ctx.save(); ctx.translate(r.x * s, r.z * s); ctx.rotate(-r.h);
       const q = labels ? 7 : 5;
       ctx.fillStyle = r.state === 'home' || r.state === 'unload' ? '#ffb040' : '#59f08f'; ctx.strokeStyle = 'rgba(0,0,0,.8)'; ctx.lineWidth = 2;
@@ -144,7 +152,9 @@
       ctx.restore();
     });
     if (LC.MP && LC.MP.active) LC.MP.each(p => dot(p.x, p.z, p.css, labels ? 6 : 4.5, p.name));
-    if (labels) W.glitterCraters.forEach(c => dot(c.x, c.z + c.R * 0.95, 'rgba(0,0,0,0)', 0, 'Glitzerstaub'));
+    if (labels) W.glitterCraters.forEach(c => dot(OX + c.x, OZ + c.z + c.R * 0.95, 'rgba(0,0,0,0)', 0, 'Glitzerstaub'));
+    M.marks.forEach((m, i) => drawMark(ctx, s, labels, m, i));
+    ctx.restore();
   }
 
   function arrow(ctx, size) {
@@ -172,19 +182,18 @@
     }
   };
 
-  function drawMarks(ctx, s, big2) {
-    M.marks.forEach((m, i) => {
-      ctx.save(); ctx.translate(m.x * s, m.z * s);
-      const r = big2 ? 8 : 5;
-      ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(r, 0); ctx.lineTo(0, r); ctx.lineTo(-r, 0); ctx.closePath();
-      ctx.fillStyle = '#6fe6ff'; ctx.strokeStyle = 'rgba(0,0,0,.85)'; ctx.lineWidth = 2; ctx.fill(); ctx.stroke();
-      if (big2) { ctx.font = '700 11px "Bahnschrift","Segoe UI",Arial,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#04121a'; ctx.fillText(String(i + 1), 0, 0.5); }
-      ctx.restore();
-    });
+  function drawMark(ctx, s, big2, m, i) {
+    ctx.save(); ctx.translate(m.x * s, m.z * s);
+    const r = big2 ? 8 : 5;
+    ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(r, 0); ctx.lineTo(0, r); ctx.lineTo(-r, 0); ctx.closePath();
+    ctx.fillStyle = '#6fe6ff'; ctx.strokeStyle = 'rgba(0,0,0,.85)'; ctx.lineWidth = 2; ctx.fill(); ctx.stroke();
+    if (big2) { ctx.font = '700 11px "Bahnschrift","Segoe UI",Arial,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#04121a'; ctx.fillText(String(i + 1), 0, 0.5); }
+    ctx.restore();
   }
 
   // px, pz, yaw = Spieler; dt in Sekunden
-  M.update = function (dt, px, pz, yaw) {
+  M.update = function (dt, wpx, wpz, yaw) {
+    const px = wpx - OX, pz = wpz - OZ;       // Spieler relativ zur Kartenmitte
     buildT += dt;
     if (buildT > (M.open ? 0.25 : 0.5)) { buildT = 0; M.rebuild(); }
 
@@ -198,14 +207,14 @@
     ctx.translate(c, c); ctx.rotate(yaw); ctx.translate(-px * s, -pz * s);
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(img, -SIZE / 2 * s, -SIZE / 2 * s, SIZE * s, SIZE * s);
-    icons(ctx, s, false); drawMarks(ctx, s, false);
+    icons(ctx, s, false);
     ctx.restore();
     // Rand abdunkeln
     const gr = ctx.createRadialGradient(c, c, c * 0.72, c, c, c);
     gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,.55)');
     ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(c, c, c, 0, Math.PI * 2); ctx.fill();
     // Staublager außerhalb? Pfeil am Rand
-    const dx = M.home.x - px, dz = M.home.z - pz, dist = Math.hypot(dx, dz);
+    const dx = M.home.x - wpx, dz = M.home.z - wpz, dist = Math.hypot(dx, dz);
     if (dist > VIEW * 0.93) {
       const a = Math.atan2(dz, dx) + yaw;
       ctx.save(); ctx.translate(c + Math.cos(a) * (c - 12), c + Math.sin(a) * (c - 12)); ctx.rotate(a + Math.PI / 2);
@@ -233,7 +242,6 @@
     ctx.strokeStyle = 'rgba(111,230,255,.55)'; ctx.setLineDash([8, 7]); ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(0, 0, CLEAN_R * vs, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
     icons(ctx, vs, true, 0);
-    drawMarks(ctx, vs, true);
     ctx.translate(px * vs, pz * vs); ctx.rotate(-yaw); arrow(ctx, 11);
     ctx.restore();
   };
@@ -247,14 +255,15 @@
     }
     edgeT -= dt; if (edgeT > 0) return; edgeT = 0.05;
     const sh = Math.sin(heading), ch = Math.cos(heading), fx = -sh, fz = -ch, rx = ch, rz = -sh;
-    const hx = bx + fx * headDist, hz = bz + fz * headDist, src = D.data, gl = D.glit, DN = D.N, k = EVIEW / EN;
+    const dm = D.maps[W.secAt(bx, bz)], ESIZE = dm.SIZE;
+    const hx = bx - dm.cx + fx * headDist, hz = bz - dm.cz + fz * headDist, src = dm.data, gl = dm.glit, DN = D.N, k = EVIEW / EN;
     for (let e = 0; e < 2; e++) {
       const sd = e ? 1 : -1, cx = hx + rx * headR * sd, cz = hz + rz * headR * sd, d = edge[e].img.data;
       for (let j = 0; j < EN; j++) {
         const lz = (EN / 2 - j - 0.5) * k + 0.6;                 // oben = vorn
         for (let i = 0; i < EN; i++) {
           const lx = (i + 0.5 - EN / 2) * k, wx = cx + rx * lx + fx * lz, wz = cz + rz * lx + fz * lz;
-          const ii = Math.floor((wx / SIZE + 0.5) * DN), jj = Math.floor((wz / SIZE + 0.5) * DN);
+          const ii = Math.floor((wx / ESIZE + 0.5) * DN), jj = Math.floor((wz / ESIZE + 0.5) * DN);
           let dust = 1, g = 0;
           if (ii >= 0 && jj >= 0 && ii < DN && jj < DN) { dust = src[jj * DN + ii] / 255; g = gl[jj * DN + ii] / 255; }
           const n = 0.9 + ((ii * 7 + jj * 13) % 5) * 0.04;

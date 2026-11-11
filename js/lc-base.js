@@ -354,58 +354,67 @@
     B.colliders.push({ x: -2.3, z: 5.6, r: 0.9 });
   }
 
-  // Tunnel-Portal am Kraterrand (in beiden Sektoren). Öffnung zeigt zur Kratermitte.
-  B.portals = { 1: { x: 38, z: -64 }, 2: { x: 0, z: 113 } };
-  B.arrive = { 1: { x: 33.5, z: -56.5 }, 2: { x: 0, z: 103 } };     // hier kommt man nach der Fahrt an
-  function buildPortal(parent, pt, line1, line2) {
-    const g = new THREE.Group(), y = W.heightAt(pt.x, pt.z);
-    g.position.set(pt.x, y, pt.z); g.rotation.y = Math.atan2(-pt.x, -pt.z);
+  // Tor am Pass nach Sektor 2 (offene Welt: kein Tunnel mehr). Geschlossen, bis der Pass in der Werkstatt freigeschaltet ist.
+  const PS = W.PASS, pAt = t => ({ x: PS.a.x + (PS.b.x - PS.a.x) * t, z: PS.a.z + (PS.b.z - PS.a.z) * t });
+  B.gatePos = pAt(0.2);
+  B.portals = { 1: pAt(0.12), 2: pAt(0.9) };          // (alte Namen) Stellen vor dem Tor / am Pass-Ausgang
+  function buildGate(parent) {
+    const pt = B.gatePos, g = new THREE.Group(), y = W.heightAt(pt.x, pt.z);
+    const yaw = Math.atan2(-(PS.b.x - PS.a.x), -(PS.b.z - PS.a.z));
+    g.position.set(pt.x, y, pt.z); g.rotation.y = yaw;
     const mCon = new THREE.MeshStandardMaterial({ color: 0x55585c, roughness: 0.85, metalness: 0.1 });
-    const mRock = new THREE.MeshStandardMaterial({ color: 0x1c1815, roughness: 1 }); mRock.envMapIntensity = 0;
-    add(g, box(1.3, 5.6, 2.2), mCon, -3.6, 2.6, 0); add(g, box(1.3, 5.6, 2.2), mCon, 3.6, 2.6, 0);
-    add(g, box(8.5, 1.3, 2.2), mCon, 0, 5.9, 0);
-    [-3.6, 3.6].forEach(x => { add(g, box(1.34, 0.5, 2.24), M.yellow, x, 1.0, 0); add(g, box(1.34, 0.5, 2.24), M.yellow, x, 3.4, 0); });
-    const hole = add(g, new THREE.PlaneGeometry(5.9, 5.3), new THREE.MeshBasicMaterial({ color: 0x010101 }), 0, 2.65, 0.6); hole.castShadow = false;
-    const hill = add(g, new THREE.SphereGeometry(1, 20, 14), mRock, 0, 1.5, -9.2); hill.scale.set(9, 6.8, 8);
-    [-2.2, 0, 2.2].forEach(x => add(g, box(0.5, 0.05, 2.6), M.warm, x, 0.04, 2.4).castShadow = false);
-    const sign = add(g, new THREE.PlaneGeometry(6.2, 1.5), new THREE.MeshStandardMaterial({
+    [-7.4, 7.4].forEach(x => {
+      add(g, box(1.5, 7.4, 1.8), mCon, x, 3.5, 0);
+      add(g, box(1.54, 0.5, 1.84), M.yellow, x, 1.0, 0); add(g, box(1.54, 0.5, 1.84), M.yellow, x, 4.6, 0);
+    });
+    add(g, box(16.4, 1.2, 1.8), mCon, 0, 7.6, 0);
+    const sign = add(g, new THREE.PlaneGeometry(8.4, 1.7), new THREE.MeshStandardMaterial({
       color: 0x000000, emissive: 0xffffff, emissiveIntensity: 1.1,
-      emissiveMap: U.textTexture([{ text: line1, size: 66, color: '#7fe9ff', y: 74 }, { text: line2, size: 36, color: '#c9f4ff', y: 150, bold: false }], { w: 860, h: 208, bg: '#04141b', border: '#2b9db8' })
-    }), 0, 5.9, 1.12);
+      emissiveMap: U.textTexture([{ text: 'PASS · SEKTOR 2', size: 70, color: '#7fe9ff', y: 78 }, { text: 'Grünes Licht = frei · einfach durchfahren', size: 34, color: '#c9f4ff', y: 152, bold: false }], { w: 1000, h: 208, bg: '#04141b', border: '#2b9db8' })
+    }), 0, 7.6, -0.92, 0, Math.PI, 0);
     sign.castShadow = false;
     const lm = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xff2a1a, emissiveIntensity: 3 });
-    add(g, new THREE.SphereGeometry(0.16, 12, 8), lm, -3.6, 5.75, 1.15); add(g, new THREE.SphereGeometry(0.16, 12, 8), lm, 3.6, 5.75, 1.15);
-    const lamp = new THREE.PointLight(0xffc890, 1.3, 22, 2); lamp.position.set(0, 4.6, 3.5); g.add(lamp);
+    [-7.4, 7.4].forEach(x => { add(g, new THREE.SphereGeometry(0.2, 12, 8), lm, x, 7.5, -0.95); add(g, new THREE.SphereGeometry(0.2, 12, 8), lm, x, 7.5, 0.95); });
+    // Schranken: leuchtende Balken quer über die Fahrbahn
+    const bars = new THREE.Group(), mBar = new THREE.MeshStandardMaterial({ color: 0x220400, emissive: 0xff2a1a, emissiveIntensity: 2.2 });
+    [1.0, 2.3, 3.6].forEach(h => { add(bars, box(13.4, 0.16, 0.16), mBar, 0, h, 0).castShadow = false; });
+    g.add(bars);
     parent.add(g);
-    const c = Math.cos(g.rotation.y), s2 = Math.sin(g.rotation.y);
-    [-3.6, 3.6].forEach(x => B.colliders.push({ x: pt.x + c * x, z: pt.z - s2 * x, r: 1.3, h: 7 }));
-    const fx = Math.sin(g.rotation.y), fz = Math.cos(g.rotation.y);
-    B.colliders.push({ x: pt.x - fx * 8, z: pt.z - fz * 8, r: 7, h: 9 });
-    B.colliders.push({ x: pt.x - fx * 1.5, z: pt.z - fz * 1.5, r: 2.6, h: 7 });
-    B.points.push({ id: 'tunnel', x: pt.x + fx * 3.5, y: y + 1.2, z: pt.z + fz * 3.5, r: 5.5 });
+    const c = Math.cos(yaw), s2 = Math.sin(yaw);
+    [-7.4, 7.4].forEach(x => B.colliders.push({ x: pt.x + c * x, z: pt.z - s2 * x, r: 1.2, h: 8 }));
+    B.points.push({ id: 'tunnel', x: B.portals[1].x, y: W.heightAt(B.portals[1].x, B.portals[1].z) + 1.2, z: B.portals[1].z, r: 6.5 });
+    // Leitpfosten mit Licht durch den ganzen Pass
+    const mPost = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffb060, emissiveIntensity: 2.4 });
+    for (let k = 0; k <= 9; k++) {
+      const q = pAt(0.06 + k * 0.1);
+      [-1, 1].forEach(sd => {
+        const x = q.x + c * sd * (PS.w - 0.8), z = q.z - s2 * sd * (PS.w - 0.8), py = W.heightAt(x, z);
+        add(parent, cyl(0.04, 0.06, 1.3, 6), M.steel, x, py + 0.65, z);
+        add(parent, new THREE.SphereGeometry(0.11, 8, 6), mPost, x, py + 1.36, z).castShadow = false;
+      });
+    }
+    B.gate = { bars, lamp: lm };
     return lm;
   }
+  // Pass auf oder zu (zeigt die Schranken, schaltet die Lampen um)
+  B.setGate = function (open) {
+    if (!B.gate) return;
+    B.gate.bars.visible = !open; B.gate.lamp.emissive.setHex(open ? 0x3dff7a : 0xff2a1a);
+  };
 
-  B.cols = { 1: [], 2: [] }; B.pts = { 1: [], 2: [] };
   B.build = function (scene) {
     mats();
     const root = B.root1 = new THREE.Group(); scene.add(root);
     buildShip(root); buildSilo(root); buildShop(root); buildPad(root); buildProps(root);
-    B.portalLight = buildPortal(root, B.portals[1], 'TUNNEL · SEKTOR 2', 'Grünes Licht = offen · E zum Durchfahren');
+    B.portalLight = buildGate(root);
   };
-  // nach dem Bauen: Hindernisse und Benutzen-Punkte des Sektors merken
-  B.capture = function (n) { B.cols[n] = B.colliders.slice(); B.pts[n] = B.points.slice(); };
-  B.setSector = function (n) {
-    B.colliders = B.cols[n].concat(W.boulders); B.points = B.pts[n];
-    if (B.root1) B.root1.visible = n === 1;
-    if (B.root2) B.root2.visible = n === 2;
-  };
+  // nach dem Bauen von Basis und Außenposten: Felsen sind auch Hindernisse
+  B.finish = function () { B.colliders = B.colliders.concat(W.boulders); };
   // Außenposten in Sektor 2 (wird beim ersten Besuch gebaut; W muss schon auf Sektor 2 stehen)
   B.buildOutpost = function (scene) {
     if (B.root2) return;
     const root = B.root2 = new THREE.Group(); scene.add(root);
-    B.colliders = []; B.points = [];
-    buildPortal(root, B.portals[2], 'TUNNEL · SEKTOR 1', 'Zurück zur Basis').emissive.setHex(0x3dff7a);
+    const C2 = W.C[2];
     const st = LC.Buggy.stations[2];
     LC.Buggy.buildStation(root, st, null, 'STAUB-ANNAHME');
     B.points.push({ id: 'post', x: st.x, y: W.heightAt(st.x, st.z) + 1.1, z: st.z, r: 4.6 });
@@ -415,7 +424,7 @@
     add(root, cyl(0.5, 0.06, 0.3, 14, true), M.steel, mx, my + 10.5, mz + 0.4, 0.6);
     beacon(root, mx, my + 12.1, mz, 0xff2a1a, 1.6, 0, 26);
     B.colliders.push({ x: mx, z: mz, r: 0.4, h: 13 });
-    [[st.x + 6, st.z - 6], [st.x - 2, st.z + 9], [8, 104]].forEach(p => {
+    [[st.x + 6, st.z - 6], [st.x - 2, st.z + 9], [C2.x + 10, C2.z + 104]].forEach(p => {
       const y = W.heightAt(p[0], p[1]);
       add(root, cyl(0.05, 0.08, 4.4, 8), M.steel, p[0], y + 2.2, p[1]);
       add(root, box(0.55, 0.12, 0.28), M.dark, p[0], y + 4.42, p[1]);
@@ -428,15 +437,13 @@
     const sg = add(root, new THREE.PlaneGeometry(2.6, 0.9), new THREE.MeshStandardMaterial({
       color: 0x000000, emissive: 0xffffff, emissiveIntensity: 1.0, side: THREE.DoubleSide,
       emissiveMap: U.textTexture([{ text: 'AUSSENPOSTEN SEKTOR 2', size: 40, color: '#ffc45a', y: 70 }, { text: 'Staub abgeben: auf die Fläche stellen, E', size: 24, color: '#e8dcc4', y: 130, bold: false }], { w: 560, h: 190, bg: '#140d04', border: '#ffb040' })
-    }), sx, sy + 2.2, sz, 0, Math.atan2(-sx, 108 - sz) , 0);
+    }), sx, sy + 2.2, sz, 0, Math.atan2(C2.x - sx, C2.z + 108 - sz) , 0);
     sg.castShadow = false;
-    B.capture(2);
   };
 
   // Boden inkl. Landeplatz
   B.groundAt = function (x, z) {
     let h = W.heightAt(x, z);
-    if (W.sec !== 1) return h;
     const p = B.pad, dx = x - p.x, dz = z - p.z;
     if (dx * dx + dz * dz < p.r * p.r * 0.92 && p.top > h) h = p.top;
     return h;

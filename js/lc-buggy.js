@@ -9,7 +9,7 @@
   BG.pos = new THREE.Vector3();
   BG.load = { n: 0, g: 0 };
   // Entladestationen je Sektor; BG.station ist die im aktiven Sektor
-  BG.stations = { 1: { x: 20, z: 11.5, r: 3.2, rot: 0.5 }, 2: { x: -18, z: 96, r: 3.2, rot: -0.35 } };
+  BG.stations = { 1: { x: 20, z: 11.5, r: 3.2, rot: 0.5 }, 2: { x: W.C[2].x - 18, z: W.C[2].z + 96, r: 3.2, rot: -0.35 } };
   BG.station = BG.stations[1];
   BG.sec = 1;                  // in welchem Sektor der Buggy steht
   BG.headR = 2.2;              // Radius der Saugfläche
@@ -151,8 +151,9 @@
 
   BG.init = function (sc) { scene = sc; build(); BG.buildStation(B.root1, BG.stations[1], { x: B.silo.x + 1.2, z: B.silo.z + 0.6 }); };
   // sichtbar nur, wenn man im selben Sektor ist
-  BG.refresh = function () { const v = BG.owned && BG.sec === W.sec; car.visible = shadow.visible = v; if (!v) hose.visible = false; BG.station = BG.stations[W.sec]; };
-  BG.here = () => BG.owned && BG.sec === W.sec;
+  // offene Welt: der Buggy ist immer da; die Entladestation ist die des Kraters, in dem er steht
+  BG.refresh = function () { const v = BG.owned; car.visible = shadow.visible = v; if (!v) hose.visible = false; BG.station = BG.stations[W.secAt(BG.pos.x, BG.pos.z)]; };
+  BG.here = () => BG.owned;
 
   function settle(dt, snap) {
     const sh = Math.sin(BG.heading), ch = Math.cos(BG.heading);
@@ -195,7 +196,8 @@
       if (d2 < rr * rr && d2 > 1e-6) { const d = Math.sqrt(d2); p.x = c.x + dx / d * rr; p.z = c.z + dz / d * rr; BG.speed *= Math.max(0, 1 - dt * 6); }
     }
     const r = Math.hypot(p.x, p.z); BG.atLimit = false;
-    if (r > W.LIMIT - 1.5) { p.x *= (W.LIMIT - 1.5) / r; p.z *= (W.LIMIT - 1.5) / r; BG.speed *= Math.max(0, 1 - dt * 5); BG.atLimit = true; }
+    if (W.clamp(p, 1.5)) { BG.speed *= Math.max(0, 1 - dt * 5); BG.atLimit = true; }
+    BG.station = BG.stations[W.secAt(p.x, p.z)];
     settle(dt, false);
     for (let i = 0; i < 4; i++) wheels[i].rotation.x -= BG.speed * dt / 0.54;
     // Saugkopf

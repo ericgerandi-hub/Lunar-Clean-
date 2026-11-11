@@ -96,11 +96,10 @@
       }
     }
     // Kraterrand: weiter geht es (noch) nicht
-    const r = Math.hypot(P.pos.x, P.pos.z);
     P.atLimit = false;
-    if (r > W.LIMIT) {
-      const nx = P.pos.x / r, nz = P.pos.z / r;
-      P.pos.x = nx * W.LIMIT; P.pos.z = nz * W.LIMIT;
+    const ox = P.pos.x, oz = P.pos.z;
+    if (W.clamp(P.pos, 0)) {
+      let nx = ox - P.pos.x, nz = oz - P.pos.z; const l = Math.hypot(nx, nz) || 1; nx /= l; nz /= l;
       const vn = P.vel.x * nx + P.vel.z * nz;
       if (vn > 0) { P.vel.x -= nx * vn; P.vel.z -= nz * vn; }
       P.atLimit = true;
