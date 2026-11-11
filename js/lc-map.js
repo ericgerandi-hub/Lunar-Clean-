@@ -40,10 +40,14 @@
       const w = toWorld(e);
       const hit = M.marks.findIndex(m => Math.hypot(m.x - w.x, m.z - w.z) * vs < 14);
       if (hit >= 0) M.marks.splice(hit, 1);
+      else if (!M.armed) return;
       else if (M.marks.length < M.MAX_MARKS) M.marks.push({ x: +w.x.toFixed(1), z: +w.z.toFixed(1) });
       else { M.marks.shift(); M.marks.push({ x: +w.x.toFixed(1), z: +w.z.toFixed(1) }); }
+      M.setArmed(false);
       if (M.onMarks) M.onMarks();
     });
+    document.getElementById('btn-mark').addEventListener('click', () => M.setArmed(!M.armed));
+    document.getElementById('btn-markclr').addEventListener('click', () => { M.marks.length = 0; M.setArmed(false); if (M.onMarks) M.onMarks(); });
     big.addEventListener('wheel', e => {
       e.preventDefault();
       const w = toWorld(e), f = e.deltaY < 0 ? 1.2 : 1 / 1.2, ns = U.clamp(vs * f, minS, 22);
@@ -115,15 +119,23 @@
     ctx.fillStyle = '#fff'; ctx.strokeStyle = 'rgba(0,0,0,.85)'; ctx.lineWidth = 2; ctx.fill(); ctx.stroke();
   }
 
+  // Markier-Modus: nach dem Klick auf den Knopf setzt der nächste Klick auf die Karte eine Markierung
+  M.armed = false;
+  M.setArmed = function (on) {
+    M.armed = on; const b = document.getElementById('btn-mark');
+    b.classList.toggle('pri', on); b.textContent = on ? 'Jetzt auf die Karte klicken …' : '＋ Markierung setzen';
+    big.style.cursor = on ? 'crosshair' : 'grab';
+  };
+
   M.setOpen = function (on, px, pz) {
     M.open = on;
     document.getElementById('bigmap').classList.toggle('hidden', !on);
     if (on) {
-      bigSize = Math.round(Math.min(window.innerHeight * 0.74, window.innerWidth * 0.8, 780));
+      bigSize = Math.round(Math.min(window.innerHeight * 0.66, window.innerWidth * 0.8, 780));
       big.style.width = big.style.height = bigSize + 'px';
       big.width = big.height = Math.round(bigSize * dpr);
       minS = bigSize / 215; vs = bigSize / 172; vx = 0; vz = 0; drag = null;
-      M.rebuild(); buildT = 0;
+      M.rebuild(); buildT = 0; M.setArmed(false);
     }
   };
 

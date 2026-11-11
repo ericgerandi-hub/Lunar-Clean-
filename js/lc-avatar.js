@@ -56,9 +56,10 @@
     return av;
   };
 
+  // Drehung um x: positiv = nach vorn (Blickrichtung), negativ = nach hinten
   function rest(av) {
     av.body.position.set(0, 0, 0); av.body.rotation.set(0, 0, 0); av.head.rotation.set(0, 0, 0);
-    [av.aL, av.aR].forEach((a, i) => { a.g.rotation.set(0, 0, i ? 0.12 : -0.12); a.fore.rotation.set(-0.15, 0, 0); });
+    [av.aL, av.aR].forEach((a, i) => { a.g.rotation.set(0, 0, i ? 0.12 : -0.12); a.fore.rotation.set(0.15, 0, 0); });
     [av.lL, av.lR].forEach(l => { l.g.rotation.set(0, 0, 0); l.shin.rotation.set(0, 0, 0); });
   }
   AV.rest = rest;
@@ -68,12 +69,12 @@
     rest(av);
     const s = Math.sin(phase) * 0.6 * amt;
     av.lL.g.rotation.x = s; av.lR.g.rotation.x = -s;
-    av.lL.shin.rotation.x = Math.max(0, -s) * 0.9; av.lR.shin.rotation.x = Math.max(0, s) * 0.9;
+    av.lL.shin.rotation.x = -Math.max(0, -s) * 0.9; av.lR.shin.rotation.x = -Math.max(0, s) * 0.9;
     av.aL.g.rotation.x = -s * 0.7; av.aR.g.rotation.x = s * 0.7;
     av.body.position.y = Math.abs(Math.cos(phase)) * 0.05 * amt;
   };
 
-  // Emote zum Zeitpunkt t (Sekunden) einstellen. k = Ein-/Ausblenden 0..1
+  // Emote zum Zeitpunkt t (Sekunden) einstellen
   AV.pose = function (av, id, t, dur) {
     rest(av);
     const k = Math.min(1, t / 0.3, (dur - t) / 0.3), s = Math.sin, PI = Math.PI;
@@ -85,30 +86,30 @@
       const j = Math.max(0, s(t * 4.2)) * k;
       av.body.position.y = j * 0.45;
       av.aL.g.rotation.set(0, 0, -(2.7 + s(t * 12) * 0.15) * k); av.aR.g.rotation.set(0, 0, (2.7 + s(t * 12 + 1) * 0.15) * k);
-      av.lL.g.rotation.x = -j * 0.35; av.lR.g.rotation.x = -j * 0.35; av.lL.shin.rotation.x = j * 0.7; av.lR.shin.rotation.x = j * 0.7;
-      av.head.rotation.x = -0.25 * k;
+      av.lL.g.rotation.x = j * 0.35; av.lR.g.rotation.x = j * 0.35; av.lL.shin.rotation.x = -j * 0.7; av.lR.shin.rotation.x = -j * 0.7;
+      av.head.rotation.x = 0.2 * k;
     } else if (id === 'dance') {
       const b = t * 5.2;
       av.body.position.y = Math.abs(s(b)) * 0.1 * k; av.body.rotation.y = s(b * 0.5) * 0.5 * k; av.body.rotation.z = s(b) * 0.1 * k;
-      av.aL.g.rotation.set(-(1.2 + s(b) * 0.6) * k, 0, -0.5 * k); av.aR.g.rotation.set(-(1.2 - s(b) * 0.6) * k, 0, 0.5 * k);
-      av.aL.fore.rotation.x = -(0.9 + s(b + 1) * 0.4) * k; av.aR.fore.rotation.x = -(0.9 - s(b + 1) * 0.4) * k;
-      av.lL.g.rotation.x = Math.max(0, s(b)) * -0.5 * k; av.lL.shin.rotation.x = Math.max(0, s(b)) * 0.9 * k;
-      av.lR.g.rotation.x = Math.max(0, -s(b)) * -0.5 * k; av.lR.shin.rotation.x = Math.max(0, -s(b)) * 0.9 * k;
+      av.aL.g.rotation.set((1.2 + s(b) * 0.6) * k, 0, -0.5 * k); av.aR.g.rotation.set((1.2 - s(b) * 0.6) * k, 0, 0.5 * k);
+      av.aL.fore.rotation.x = (0.9 + s(b + 1) * 0.4) * k; av.aR.fore.rotation.x = (0.9 - s(b + 1) * 0.4) * k;
+      av.lL.g.rotation.x = Math.max(0, s(b)) * 0.5 * k; av.lL.shin.rotation.x = -Math.max(0, s(b)) * 0.9 * k;
+      av.lR.g.rotation.x = Math.max(0, -s(b)) * 0.5 * k; av.lR.shin.rotation.x = -Math.max(0, -s(b)) * 0.9 * k;
       av.head.rotation.y = s(b * 0.5 + 1) * 0.3 * k;
     } else if (id === 'thumb') {
-      av.aR.g.rotation.set(-1.45 * k, 0, 0.15); av.aR.fore.rotation.set(-0.5 * k + s(t * 7) * 0.08 * k, 0, 0);
+      av.aR.g.rotation.set(1.45 * k, 0, 0.15); av.aR.fore.rotation.set(0.5 * k + s(t * 7) * 0.08 * k, 0, 0);
       av.head.rotation.x = s(t * 6) * 0.08 * k; av.body.rotation.x = -0.05 * k;
     } else if (id === 'sit') {
-      av.body.position.y = -0.52 * k; av.body.rotation.x = 0.12 * k;
-      av.lL.g.rotation.x = -1.5 * k; av.lR.g.rotation.x = -1.5 * k; av.lL.g.rotation.z = -0.15 * k; av.lR.g.rotation.z = 0.15 * k;
-      av.lL.shin.rotation.x = 0.5 * k; av.lR.shin.rotation.x = 0.5 * k;
-      av.aL.g.rotation.set(0.5 * k, 0, -0.35 * k); av.aR.g.rotation.set(0.5 * k, 0, 0.35 * k);
-      av.head.rotation.x = -0.3 * k + s(t * 0.9) * 0.05;
+      av.body.position.y = -0.52 * k; av.body.rotation.x = 0.1 * k;
+      av.lL.g.rotation.x = 1.5 * k; av.lR.g.rotation.x = 1.5 * k; av.lL.g.rotation.z = -0.15 * k; av.lR.g.rotation.z = 0.15 * k;
+      av.lL.shin.rotation.x = -0.45 * k; av.lR.shin.rotation.x = -0.45 * k;
+      av.aL.g.rotation.set(0.55 * k, 0, -0.3 * k); av.aR.g.rotation.set(0.55 * k, 0, 0.3 * k);
+      av.head.rotation.x = 0.2 * k + s(t * 0.9) * 0.05;
     } else if (id === 'flip') {
+      // (unverändert – der Salto passt so)
       const u = Math.min(1, Math.max(0, (t - 0.3) / (dur - 0.7)));
       av.body.position.y = 4 * u * (1 - u) * 1.0;
       const body = av.body; body.rotation.x = u * PI * 2;
-      // um die Körpermitte drehen statt um die Füße
       const c = 1.1; body.position.y += c - Math.cos(u * PI * 2) * c; body.position.z = -Math.sin(u * PI * 2) * c;
       const tuck = Math.sin(u * PI);
       av.lL.g.rotation.x = -1.3 * tuck; av.lR.g.rotation.x = -1.3 * tuck; av.lL.shin.rotation.x = 1.6 * tuck; av.lR.shin.rotation.x = 1.6 * tuck;

@@ -115,6 +115,7 @@
   #bigmap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0, 4, 8, .55); pointer-events: auto; }
   #bigmap .panel { padding: 14px 16px 12px; }
   #bigmap canvas { display: block; margin: 12px 0 10px; border-radius: 4px; cursor: crosshair; }
+  #bigmap .mbtn { display: flex; gap: 10px; margin-top: 10px; }
   #bigmap .hint { font-size: 12.5px; color: var(--mut); margin-top: 8px; }
   #bigmap .hint b { color: var(--txt); }
   #bigmap .leg { display: flex; gap: 16px; font-size: 12.5px; color: var(--mut); align-items: center; flex-wrap: wrap; }
@@ -223,7 +224,7 @@
   <div id="edges" class="hidden"><div class="scr l"><canvas id="edge-l"></canvas><span>KANTE LINKS<b>▮ SPUR</b></span></div><div class="scr r"><canvas id="edge-r"></canvas><span>KANTE RECHTS<b>▮ SPUR</b></span></div></div>
   <div id="marks"></div>
   <div id="emotes" class="panel hidden"></div>
-  <div id="bigmap" class="hidden"><div class="panel"><div class="lbl"><span>Karte · Sektor 1</span><b id="map-pc"></b></div><canvas id="bigmap-c"></canvas><div class="leg"><span><i style="background:#d6e0e8"></i>geputzt</span><span><i style="background:#40372f"></i>Staub</span><span><i style="background:#6058cd"></i>Glitzerstaub</span><span><i style="background:#ffbf5a;border-radius:50%"></i>Staublager</span><span><i style="background:#6fe6ff"></i>Werkstatt</span><span><i style="background:#6fe6ff;transform:rotate(45deg)"></i>Markierung</span></div><div class="hint"><b>Ziehen</b> verschieben · <b>Mausrad</b> zoomen · <b>Klick</b> Markierung setzen oder löschen · <b>M</b> ganzer Mond · <b>Esc</b> schließen</div></div></div>
+  <div id="bigmap" class="hidden"><div class="panel"><div class="lbl"><span>Karte · Sektor 1</span><b id="map-pc"></b></div><canvas id="bigmap-c"></canvas><div class="leg"><span><i style="background:#d6e0e8"></i>geputzt</span><span><i style="background:#40372f"></i>Staub</span><span><i style="background:#6058cd"></i>Glitzerstaub</span><span><i style="background:#ffbf5a;border-radius:50%"></i>Staublager</span><span><i style="background:#6fe6ff"></i>Werkstatt</span><span><i style="background:#6fe6ff;transform:rotate(45deg)"></i>Markierung</span></div><div class="mbtn"><button id="btn-mark" class="small">＋ Markierung setzen</button><button id="btn-markclr" class="small">Alle Markierungen löschen</button></div><div class="hint"><b>Ziehen</b> verschieben · <b>Mausrad</b> zoomen · <b>Klick auf eine Markierung</b> löscht sie · <b>M</b> ganzer Mond · <b>Esc</b> schließen</div></div></div>
   <div id="fps"></div>
 </div>
 
@@ -287,21 +288,21 @@
 <div id="loading"><b>LUNAR CLEAN</b><span>MONDOBERFLÄCHE WIRD VERSTAUBT …</span></div>
 
 <script src="lib/three.min.js"></script>
-<script src="js/lc-util.js?v=0.4.1"></script>
-<script src="js/lc-world.js?v=0.4.1"></script>
-<script src="js/lc-dust.js?v=0.4.1"></script>
-<script src="js/lc-base.js?v=0.4.1"></script>
-<script src="js/lc-audio.js?v=0.4.1"></script>
-<script src="js/lc-player.js?v=0.4.1"></script>
-<script src="js/lc-vacuum.js?v=0.4.1"></script>
-<script src="js/lc-post.js?v=0.4.1"></script>
-<script src="js/lc-sacks.js?v=0.4.1"></script>
-<script src="js/lc-buggy.js?v=0.4.1"></script>
-<script src="js/lc-map.js?v=0.4.1"></script>
-<script src="js/lc-avatar.js?v=0.4.1"></script>
-<script src="js/lc-globe.js?v=0.4.1"></script>
-<script src="js/lc-cutscene.js?v=0.4.1"></script>
-<script src="js/lc-ui.js?v=0.4.1"></script>
-<script src="js/lc-main.js?v=0.4.1"></script>
+<script src="js/lc-util.js?v=0.4.2"></script>
+<script src="js/lc-world.js?v=0.4.2"></script>
+<script src="js/lc-dust.js?v=0.4.2"></script>
+<script src="js/lc-base.js?v=0.4.2"></script>
+<script src="js/lc-audio.js?v=0.4.2"></script>
+<script src="js/lc-player.js?v=0.4.2"></script>
+<script src="js/lc-vacuum.js?v=0.4.2"></script>
+<script src="js/lc-post.js?v=0.4.2"></script>
+<script src="js/lc-sacks.js?v=0.4.2"></script>
+<script src="js/lc-buggy.js?v=0.4.2"></script>
+<script src="js/lc-map.js?v=0.4.2"></script>
+<script src="js/lc-avatar.js?v=0.4.2"></script>
+<script src="js/lc-globe.js?v=0.4.2"></script>
+<script src="js/lc-cutscene.js?v=0.4.2"></script>
+<script src="js/lc-ui.js?v=0.4.2"></script>
+<script src="js/lc-main.js?v=0.4.2"></script>
 </body>
 </html>
