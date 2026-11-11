@@ -4,7 +4,7 @@
    ========================================================= */
 (function (LC) {
   const U = LC.U, W = LC.World, D = LC.Dust, B = LC.Base, PL = LC.Player, V = LC.Vacuum, P = LC.Post, A = LC.Audio, UI = LC.UI, SK = LC.Sacks, BG = LC.Buggy, AV = LC.Avatar, GL = LC.Globe, CS = LC.Cutscene, MP = LC.MP, RB = LC.Robots;
-  const VERSION = '0.8.0';                 // nach jeder Änderung hochzählen
+  const VERSION = '0.9.0';                 // nach jeder Änderung hochzählen
   const SAVE_KEY = 'lunarclean_save_v1', SET_KEY = 'lunarclean_settings_v1';
   const DONE_AT = 0.9995;                  // Sektor gilt erst als fertig, wenn die Anzeige 100 % zeigt
   const PRICE_N = 2, PRICE_G = 15;         // ¢ pro kg: normaler Staub / Glitzerstaub
@@ -44,9 +44,9 @@
     desc: 'Mehr Staub pro Fahrt, bevor du entladen musst.', fmt: v => UI.n0(v) + ' kg' };
   UP.bhead = { name: 'Buggy-Saugkopf', max: 2, costs: [5000, 12000], vals: [2.2, 3.0, 3.8], needs: 'buggy',
     desc: 'Der Buggy putzt eine breitere Spur.', fmt: v => UI.n1(v * 2) + ' m breit' };
-  UP.tunnel = { name: 'Tunnel nach Sektor 2', max: 1, costs: [12000], needs: 'buggy',
-    help: ['Der Tunnel liegt am Kraterrand im Nordosten. Auf der Karte ist er ein lila Quadrat, das Licht am Portal ist jetzt grün.', 'Hinfahren oder hinlaufen und E drücken. Sitzt du im Buggy, kommt er mit.', 'Sektor 2 ist mehr als doppelt so groß, mit rotem Roststaub, einem Berg in der Mitte und sechs Glitzerfeldern.', 'Dort gibt es einen Außenposten: Stell dich oder den Buggy auf die markierte Fläche und drücke E, um Staub abzugeben.', 'Werkstatt und Staublager bleiben in Sektor 1. Durch den Tunnel kommst du jederzeit zurück.'],
-    desc: 'Öffnet den Tunnel am Kraterrand. Dahinter liegt ein viel größerer Krater mit rotem Roststaub und sechs Glitzerfeldern.' };
+  UP.tunnel = { name: 'Pass nach Sektor 2', max: 1, costs: [12000], needs: 'buggy',
+    help: ['Das Tor am Kraterrand im Norden ist jetzt offen – grünes Licht, die Schranken sind weg. Auf der Karte ist der Pass ein lila Streifen.', 'Fahr oder lauf einfach durch die Schlucht. Es gibt kein Umschalten mehr: beide Krater sind eine zusammenhängende Welt.', 'Sektor 2 ist mehr als doppelt so groß, mit rotem Roststaub, einem Berg in der Mitte und sechs Glitzerfeldern.', 'Gleich hinter dem Pass steht der Außenposten: Stell dich oder den Buggy auf die markierte Fläche und drück E, dann wird dein Staub dort gekauft.'],
+    desc: 'Öffnet das Tor am Pass im Norden. Dahinter liegt ein viel größerer Krater mit rotem Roststaub und sechs Glitzerfeldern – ohne Ladepause einfach hinfahren.' };
   UP.robot = { name: 'Putzroboter', max: 4, costs: [4000, 9000, 20000, 45000], vals: [0, 1, 2, 3, 4], cond: 'sectorDone', condTxt: 'Erst Sektor 1 blitzblank putzen',
     help: ['Der Roboter steckt nach dem Kauf in deinem Gepäck. Geh dorthin, wo er putzen soll, und drück R – dann setzt du ihn ab.', 'Er fährt von allein zum nächsten Staub, saugt ihn auf (bis 300 kg) und bringt die Ladung selbst zum Staublager oder zum Außenposten. Das Geld landet direkt in deiner Kasse.', 'Mitnehmen: Stell dich neben ihn und drück E, dann ist er wieder im Gepäck – so kommt er auch mit durch den Tunnel.', 'Er arbeitet nur in dem Sektor, in dem du gerade bist. Auf der Karte ist er ein grünes Dreieck. Grünes Licht: er putzt. Oranges Licht: er bringt Staub weg. Blaues Licht: kein Staub mehr da.', 'Jede weitere Stufe ist ein Roboter mehr (bis zu 4).'],
     desc: 'Putzt ganz von allein: fährt zum Staub, saugt und bringt die Ladung selbst zur Abgabe. Jede Stufe ist ein Roboter mehr.', fmt: v => v + (v === 1 ? ' Roboter' : ' Roboter') };
@@ -80,7 +80,7 @@
     G.tank = { n: 0, g: 0 };
     G.carry = [];              // getragene Säcke: [{n, g}]
     G.sec = 1;                 // in welchem Sektor man gerade ist
-    G.marksAll = { 1: [], 2: [] }; G.marks = G.marksAll[1];   // Markierungen auf der Karte je Sektor: [{x, z}]
+    G.marks = [];              // Markierungen auf der Karte (Welt-Koordinaten): [{x, z}]
     G.tool = 'spoon';
     G.stats = { kg: 0, earned: 0, time: 0, sold: 0, sectorDone: false, sector2Done: false, sec2Seen: false, intro: false, mapSeen: false, emoted: false };
     G.stage = 0;
@@ -99,9 +99,9 @@
       let px = PL.pos.x, pz = PL.pos.z;
       if (BG.driving) { BG.exitPoint(tmpV); px = tmpV.x; pz = tmpV.z; }
       localStorage.setItem(SAVE_KEY, JSON.stringify({
-        v: 1, gv: 2, sec: G.sec, marksAll: G.marksAll, money: G.money, up: G.up, tank: G.tank, stats: G.stats, stage: G.stage, tool: G.tool, carry: G.carry,
-        sacks: SK.serializeAll(G.sec), buggy: BG.owned ? BG.serialize() : null, robots: RB.serialize(),
-        pos: [px, pz, PL.yaw], dust: D.serializeSector(1), dust2: D.serializeSector(2)
+        v: 1, gv: 3, marks: G.marks, money: G.money, up: G.up, tank: G.tank, stats: G.stats, stage: G.stage, tool: G.tool, carry: G.carry,
+        sacks: SK.serialize(), buggy: BG.owned ? BG.serialize() : null, robots: RB.serialize(),
+        pos: [px, pz, PL.yaw], dust: D.serialize(1), dust2: D.serialize(2)
       }));
     } catch (e) { /* Speicher voll oder gesperrt: Spiel läuft trotzdem weiter */ }
   }
@@ -111,89 +111,66 @@
     try {
       const raw = localStorage.getItem(SAVE_KEY); if (!raw) return false;
       const o = JSON.parse(raw); if (!o || o.v !== 1) return false;
-      freshState(); toSector1();
+      freshState();
+      // Spielstände vor 0.9 (gv < 3): Sektor 2 hatte eigene Koordinaten – in die offene Welt verschieben
+      const oldW = o.gv !== 3, C2 = W.C[2], sh = (x, z, sec) => (oldW && +sec === 2 ? [x + C2.x, z + C2.z] : [x, z]);
       G.money = +o.money || 0; G.shown = G.money;
       const old = !o.up || o.up.shovel === undefined;      // Spielstand von vor Version 0.3
       Object.keys(G.up).forEach(k => { G.up[k] = U.clamp(Math.floor(+(o.up || {})[k] || 0), 0, UP[k].max); });
       Object.assign(G.stats, o.stats || {}); G.stage = +o.stage || 0;
       if (old) { G.up.shovel = 1; G.up.vac = 1; G.stage = G.up.repair ? 6 : 5; }
-      if (o.gv !== 2) { G.stage += 2; G.stats.intro = true; G.stats.mapSeen = true; G.stats.emoted = true; }   // vor Version 0.4: zwei neue Ziele am Anfang
+      if (o.gv !== 2 && o.gv !== 3) { G.stage += 2; G.stats.intro = true; G.stats.mapSeen = true; G.stats.emoted = true; }   // vor Version 0.4: zwei neue Ziele am Anfang
       const mk = a => (Array.isArray(a) ? a : []).slice(0, 10).map(m => ({ x: +m.x || 0, z: +m.z || 0 }));
-      G.marksAll = { 1: mk(o.marksAll ? o.marksAll[1] : o.marks), 2: mk(o.marksAll ? o.marksAll[2] : null) };
-      G.sec = o.sec === 2 && G.up.tunnel ? 2 : 1;
+      G.marks = oldW && o.marksAll ? mk(o.marksAll[1]).concat(mk(o.marksAll[2]).map(m => ({ x: m.x + C2.x, z: m.z + C2.z }))).slice(0, 10) : mk(o.marks);
+      W.open = G.up.tunnel > 0;
+      const oldSec = oldW && o.sec === 2 && G.up.tunnel ? 2 : 1;
       G.tank.n = Math.max(0, +(o.tank || {}).n || 0); G.tank.g = Math.max(0, +(o.tank || {}).g || 0);
       const over = tankTotal() / cap(); if (over > 1) { G.tank.n /= over; G.tank.g /= over; }
       G.carry = (Array.isArray(o.carry) ? o.carry : []).slice(0, SK.CARRY).map(c => ({ n: Math.max(0, +c.n || 0), g: Math.max(0, +c.g || 0) }));
       G.tool = o.tool || bestTool();
-      if (!o.dust || !D.deserialize(o.dust)) D.reset();
-      D.loadStash(2, o.dust2);
-      SK.loadAll(o.sacks, 1);
-      if (o.pos) PL.reset(+o.pos[0] || 0, +o.pos[1] || 0, +o.pos[2] || 0); else PL.reset(B.spawn.x, B.spawn.z, B.spawn.yaw);
-      BG.load.n = BG.load.g = 0; BG.sec = Array.isArray(o.buggy) && +o.buggy[5] === 2 ? 2 : 1;
-      if (G.up.buggy && Array.isArray(o.buggy)) { BG.setOwned(true); BG.place(+o.buggy[0] || BG.park.x, +o.buggy[1] || BG.park.z, +o.buggy[2] || 0); BG.load.n = Math.max(0, +o.buggy[3] || 0); BG.load.g = Math.max(0, +o.buggy[4] || 0); }
+      if (!o.dust || !D.deserialize(1, o.dust)) D.reset(1);
+      if (!o.dust2 || !D.deserialize(2, o.dust2)) D.reset(2);
+      SK.load((o.sacks || []).map(a => { const q = sh(+a[0] || 0, +a[1] || 0, a[4]); return [q[0], q[1], a[2], a[3]]; }));
+      if (o.pos) { const q = sh(+o.pos[0] || 0, +o.pos[1] || 0, oldSec); PL.reset(q[0], q[1], +o.pos[2] || 0); } else PL.reset(B.spawn.x, B.spawn.z, B.spawn.yaw);
+      if (!W.inside(PL.pos.x, PL.pos.z, 0)) PL.reset(B.spawn.x, B.spawn.z, B.spawn.yaw);
+      BG.load.n = BG.load.g = 0;
+      if (G.up.buggy && Array.isArray(o.buggy)) { const q = sh(+o.buggy[0] || BG.park.x, +o.buggy[1] || BG.park.z, o.buggy[5]); BG.setOwned(true); BG.place(q[0], q[1], +o.buggy[2] || 0); BG.load.n = Math.max(0, +o.buggy[3] || 0); BG.load.g = Math.max(0, +o.buggy[4] || 0); }
       else if (G.up.buggy) { BG.setOwned(true); BG.place(BG.park.x, BG.park.z, BG.park.heading); }
       else BG.setOwned(false);
-      RB.load(o.robots, G.up.robot);
-      if (G.sec === 2) { enterSector(2); if (o.pos) PL.reset(+o.pos[0] || 0, +o.pos[1] || 0, +o.pos[2] || 0); }
+      RB.load((o.robots || []).map(a => { const q = sh(+a[1] || 0, +a[2] || 0, a[0]); return [a[0], q[0], q[1], a[3], a[4], a[5]]; }), G.up.robot);
+      setSec(W.secAt(PL.pos.x, PL.pos.z), true);
       return true;
     } catch (e) { if (window.console) console.warn('Spielstand konnte nicht geladen werden:', e); return false; }
   }
   function newGame() {
-    freshState(); toSector1(); D.reset(); PL.reset(B.spawn.x, B.spawn.z, B.spawn.yaw);
+    freshState(); W.open = false; D.reset(); PL.reset(B.spawn.x, B.spawn.z, B.spawn.yaw); setSec(1, true);
     SK.clear(); RB.clear(); BG.setOwned(false); BG.load.n = BG.load.g = 0; selling = null;
     applyState();
     try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
   }
-  // ---------- Sektoren ----------
-  // ebene Flächen unter den Bauten (vor dem Aufbau des Geländes setzen)
-  function addFlats(n) {
-    const st = BG.stations[n], pt = B.portals[n];
-    if (n === 1) W.addFlat(B.pad.x, B.pad.z, B.pad.r + 0.8, 0.05);
-    W.addFlat(st.x, st.z, 5.0, 0.05); W.addFlat(pt.x, pt.z, 6.0, 0);
+  // ---------- Offene Welt ----------
+  // ebene Flächen unter den Bauten (vor dem Aufbau des Geländes setzen; Angaben relativ zum jeweiligen Krater)
+  function addFlats() {
+    const s1 = BG.stations[1], s2 = BG.stations[2], C2 = W.C[2];
+    W.addFlat(B.pad.x, B.pad.z, B.pad.r + 0.8, 0.05, 1); W.addFlat(s1.x, s1.z, 5.0, 0.05, 1);
+    W.addFlat(s2.x - C2.x, s2.z - C2.z, 5.0, 0.05, 2);
   }
-  // unter den Bauten liegt kein Staub; unsichtbare Reste zählen nicht
+  // unter den Bauten und auf dem Pass liegt kein Staub; unsichtbare Reste zählen nicht
   function clearStatic() {
-    const st = BG.stations[W.sec], pt = B.portals[W.sec];
-    if (W.sec === 1) D.clearArea(B.pad.x, B.pad.z, B.pad.r + 0.4);
-    D.clearArea(st.x, st.z, 2.8, 4.1, st.rot); D.clearArea(pt.x, pt.z, 5.0); D.normalize();
+    D.clearArea(B.pad.x, B.pad.z, B.pad.r + 0.4);
+    [1, 2].forEach(n => { const st = BG.stations[n]; D.clearArea(st.x, st.z, 2.8, 4.1, st.rot); });
+    D.clearArea(W.PASS.a.x, W.PASS.a.z, W.PASS.w + 2.5, 0, 0, [W.PASS.b.x, W.PASS.b.z]);
+    D.normalize();
   }
-  // Welt auf einen Sektor umbauen (Gelände, Felsen, Bauten, Karte)
-  function setupSector(n) {
-    W.setSector(n); addFlats(n); W.rebuild();
-    if (n === 2) B.buildOutpost(scene);
-    B.setSector(n); BG.refresh();
-    if (BG.here()) BG.place(BG.pos.x, BG.pos.z, BG.heading);
+  // In welchem Krater steht der Spieler? Danach richten sich Anzeige, Karte, Wegweiser und Schatten.
+  function setSec(n, force) {
+    if (!force && W.sec === n && G.sec === n) return;
+    W.setSector(n); G.sec = n;
     LC.Map.reconfigure(); LC.Map.home = n === 1 ? B.silo : BG.stations[2];
     shadowFrames = 3;
   }
-  // Sektor wechseln und Staubkarte und Säcke mitnehmen
-  function enterSector(n) {
-    const from = W.sec; if (from === n) return;
-    D.leave(from); setupSector(n); D.enter(n); SK.switchSector(from, n);
-    clearStatic();
-  }
-  // vor dem Laden oder einem neuen Spiel: zurück in Sektor 1, nichts zwischengelagert
-  function toSector1() {
-    if (W.sec !== 1) { setupSector(1); D.configure(); }
-    D.stash = {}; D.pc = {}; SK.stash = {}; BG.sec = 1;
-  }
-  // Fahrt durch den Tunnel
   let travelFade = 0;
-  function travel() {
-    const to = G.sec === 1 ? 2 : 1, driving = BG.driving;
-    $('black').style.opacity = 1; travelFade = 1.4;
-    G.sec = to; if (driving) BG.sec = to;
-    enterSector(to);
-    G.marks = G.marksAll[to]; LC.Map.marks = G.marks;
-    const a = B.arrive[to], yaw = Math.atan2(a.x, a.z);
-    if (driving) { BG.place(a.x, a.z, yaw); BG.lookYaw = 0; PL.pos.copy(BG.pos); }
-    else PL.reset(a.x, a.z, yaw);
-    if (to === 2) G.stats.sec2Seen = true;
-    if (!driving && BG.owned && BG.sec !== to) UI.toast('Dein Buggy steht noch in Sektor ' + BG.sec + '.', '', 5);
-    A.play('sold'); UI.toast(W.cfg.name.toUpperCase(), 'big', 4);
-    if (to === 2 && !G.stats.sector2Done) UI.toast('Roststaub, soweit das Auge reicht. Abgeben am Außenposten.', '', 6);
-    save(); MP.traveled();
-  }
+  function openPass(on) { W.open = !!on; B.setGate(W.open); }
 
   // ---------- Mehrspieler: was lc-mp von hier braucht ----------
   const mpctx = {
@@ -204,26 +181,22 @@
     pstate: () => [+PL.pos.x.toFixed(2), +PL.pos.y.toFixed(2), +PL.pos.z.toFixed(2), +PL.yaw.toFixed(3), +PL.pitch.toFixed(2),
       (state === 'play' && !BG.driving && V.intensity > 0.2 ? 1 : 0) | (PL.jetting ? 2 : 0) | (PL.crouch ? 4 : 0) | (BG.driving ? 8 : 0) | (riding ? 16 : 0),
       MP.TOOL_IDS.indexOf(G.tool), emote ? AV.EMOTES.findIndex(e => e.id === emote.id) : -1, emote ? +emote.t.toFixed(2) : 0],
-    snapshot: () => ({ sec: G.sec, dust: D.serialize(), sacks: SK.netList() }),
+    snapshot: () => ({ sec: G.sec, dust: D.serialize(1) + '|' + D.serialize(2), sacks: SK.netList() }),
     // Gastgeber kauft im Auftrag eines Gastes
     buyFor: id => { const u = UP[id]; if (!u) return false; const lv = G.up[id]; if (lv >= u.max || G.money < u.costs[lv] || (u.needs && !G.up[u.needs]) || (u.cond && !G.stats[u.cond])) return false; buyCore(id); if (state === 'shop') renderShop(); save(); return true; },
     // Gast: Welt vom Gastgeber übernehmen
     applySnap: (kind, sec, dust, sacks, eco) => {
-      if (kind === 'sync') { D.deserialize(dust); return; }
+      const dd = String(dust).split('|');
+      if (kind === 'sync') { D.deserialize(1, dd[0]); D.deserialize(2, dd[1] || ''); return; }
       if (BG.driving) { BG.driving = false; BG.speed = 0; BG.suck = 0; A.setBuggy(false, 0); }
       selling = null; BG.unloading = false; riding = false;
-      if (kind === 'join') { MP.wasGuest = true; RB.clear(); freshState(); G.stats.intro = G.stats.mapSeen = G.stats.emoted = true; BG.setOwned(false); BG.load.n = BG.load.g = 0; D.stash = {}; D.pc = {}; SK.stash = {}; }
-      if (W.sec !== sec) setupSector(sec);
-      D.configure(); if (!D.deserialize(dust)) D.reset();
-      SK.netLoad(sacks); G.sec = sec; G.marks = G.marksAll[sec]; LC.Map.marks = G.marks;
-      if (kind === 'join') {
-        mpctx.applyEco(eco); G.tool = bestTool(); applyState();
-        const a = sec === 1 ? B.spawn : B.arrive[2], k = MP.myColor || 1;
-        PL.reset(a.x + Math.cos(k * 2.1) * 2.2, a.z + Math.sin(k * 2.1) * 2.2, sec === 1 ? B.spawn.yaw : Math.atan2(a.x, a.z));
-      } else {
-        const a = B.arrive[sec]; PL.reset(a.x + (Math.random() - 0.5) * 3, a.z + (Math.random() - 0.5) * 3, Math.atan2(a.x, a.z));
-        $('black').style.opacity = 1; travelFade = 1.4; A.play('sold'); UI.toast(W.cfg.name.toUpperCase(), 'big', 4);
-      }
+      MP.wasGuest = true; RB.clear(); freshState(); G.stats.intro = G.stats.mapSeen = G.stats.emoted = true; BG.setOwned(false); BG.load.n = BG.load.g = 0;
+      if (!D.deserialize(1, dd[0])) D.reset(1);
+      if (!D.deserialize(2, dd[1] || '')) D.reset(2);
+      SK.netLoad(sacks);
+      mpctx.applyEco(eco); G.tool = bestTool(); applyState();
+      const k = MP.myColor || 1;
+      PL.reset(B.spawn.x + Math.cos(k * 2.1) * 2.2, B.spawn.z + Math.sin(k * 2.1) * 2.2, B.spawn.yaw); setSec(1, true);
       shadowFrames = 3;
     },
     // Gast: Geld-Stand, Upgrades und Ziele kommen vom Gastgeber
@@ -233,7 +206,7 @@
         const v = U.clamp(Math.floor(+e.up[k] || 0), 0, UP[k].max); if (v === G.up[k]) return;
         G.up[k] = v; ch = true;
         if (k === 'repair') V.setRepaired(v > 0);
-        if (k === 'tunnel' && B.portalLight) B.portalLight.emissive.setHex(v ? 0x3dff7a : 0xff2a1a);
+        if (k === 'tunnel') openPass(v > 0);
         if (k === 'buggy') BG.setOwned(v > 0);
       });
       ['sectorDone', 'sector2Done', 'sec2Seen', 'bonusPaid', 'bonus2Paid'].forEach(k => { G.stats[k] = !!e.stats[k]; });
@@ -247,7 +220,7 @@
         else UI.toast(MP.nameOf(m.by) + ' hat gekauft: ' + UP[m.id].name, 'gold', 4);
         if (m.id === 'buggy') UI.toast('Der Mondbuggy steht neben der Basis bereit!', 'gold', 5);
       } else if (m.k === 'done') {
-        A.play('goal'); UI.toast(W.cfg.name.toUpperCase() + ' IST BLITZBLANK!', 'big', 6);
+        A.play('goal'); UI.toast('SEKTOR ' + (m.sec || G.sec) + ' IST BLITZBLANK!', 'big', 6);
         if (m.bonus) UI.toast('Sektor-Bonus: + ' + UI.n0(m.bonus) + ' ¢', 'gold', 6);
       }
     },
@@ -265,9 +238,9 @@
     clearStatic();
     // wurde Sektor 1 in einer älteren Version zu früh als fertig gemeldet? Dann geht es weiter
     if (G.stats.sectorDone && D.percentOf(1) < DONE_AT) { G.stats.sectorDone = false; G.stats.bonusPaid = true; G.stage = Math.min(G.stage, GOALS.findIndex(g => g.k === 's1')); }
-    G.marks = G.marksAll[G.sec]; LC.Map.marks = G.marks;
+    LC.Map.marks = G.marks;
     BG.CAP = val('bcap'); BG.headR = val('bhead');
-    if (B.portalLight) B.portalLight.emissive.setHex(G.up.tunnel ? 0x3dff7a : 0xff2a1a);
+    openPass(G.up.tunnel > 0); BG.refresh();
     V.setRepaired(G.up.repair > 0);
     const t = TOOLS.filter(x => x.id === G.tool)[0];
     if (!t || !t.has()) G.tool = bestTool();
@@ -323,8 +296,8 @@
     try { Object.assign(S, JSON.parse(localStorage.getItem(SET_KEY) || '{}')); } catch (e) {}
     if (['niedrig', 'mittel', 'hoch'].indexOf(S.gfx) < 0) S.gfx = 'mittel';
 
+    addFlats();
     D.init();
-    addFlats(1);
     W.build(scene, D.tex, D.glitTex);
     if (S.gfx === 'niedrig') W.sun.shadow.mapSize.set(2048, 2048);
     B.build(scene);
@@ -332,7 +305,7 @@
     avatar = AV.build(); avatar.root.visible = false; scene.add(avatar.root);
     SK.init(scene, s => { shadowFrames = 2; A.play('thump'); V.kickDust(s.x, s.y, s.z, 12, 0.9); });
     BG.init(scene);
-    B.capture(1); B.setSector(1); LC.Map.home = B.silo;
+    B.buildOutpost(scene); B.finish(); LC.Map.home = B.silo;
     const env = buildEnv();
     scene.environment = env; V.scene.environment = env;
 
@@ -350,7 +323,7 @@
     RB.init(scene);
     MP.init(mpctx, scene);
     freshState();
-    if (!load()) { freshState(); toSector1(); D.reset(); SK.clear(); BG.setOwned(false); PL.reset(B.spawn.x, B.spawn.z, B.spawn.yaw); }
+    if (!load()) { freshState(); W.open = false; D.reset(); SK.clear(); BG.setOwned(false); PL.reset(B.spawn.x, B.spawn.z, B.spawn.yaw); setSec(1, true); }
     applyState();
     A.vol = S.vol; A.music = S.music; PL.sens = S.sens;
 
@@ -695,8 +668,8 @@
     const u = UP[id], lv = G.up[id];
     G.money -= u.costs[lv]; G.shown = G.money; G.up[id] = lv + 1;
     if (id === 'repair') V.setRepaired(true);
-    if (id === 'tunnel' && B.portalLight) B.portalLight.emissive.setHex(0x3dff7a);
-    if (id === 'buggy') { BG.setOwned(true); BG.sec = 1; if (G.sec === 1) BG.place(BG.park.x, BG.park.z, BG.park.heading); else { BG.pos.set(BG.park.x, 0, BG.park.z); BG.heading = BG.park.heading; BG.refresh(); } UI.toast('Der Mondbuggy steht neben der Basis bereit!', 'gold', 5); }
+    if (id === 'tunnel') { openPass(true); UI.toast('Der Pass nach Sektor 2 ist offen!', 'gold', 6); }
+    if (id === 'buggy') { BG.setOwned(true); BG.place(BG.park.x, BG.park.z, BG.park.heading); UI.toast('Der Mondbuggy steht neben der Basis bereit!', 'gold', 5); }
     BG.CAP = val('bcap'); BG.headR = val('bhead');
     if (id === 'robot') { RB.add(); UI.toast('Putzroboter im Gepäck – mit R setzt du ihn ab.', 'gold', 6); }
   }
@@ -747,15 +720,15 @@
     }
     if (BG.here() && Math.hypot(PL.pos.x - BG.pos.x, PL.pos.z - BG.pos.z) < 3.7 && Math.abs(PL.pos.y - BG.pos.y) < 2.5) nearBuggy = true;
     nearSack = SK.nearest(PL.pos.x, PL.pos.z, 1.5);
-    nearRobot = MP.guest ? null : RB.nearest(PL.pos.x, PL.pos.z, 2.1, G.sec);
+    nearRobot = MP.guest ? null : RB.nearest(PL.pos.x, PL.pos.z, 2.1);
   }
   // Roboter aus dem Gepäck vor sich absetzen
   function placeRobot() {
     if (MP.guest || BG.driving || selling || emote) return;
     const r = RB.packed()[0]; if (!r) return;
     const x = PL.pos.x - Math.sin(PL.yaw) * 2.2, z = PL.pos.z - Math.cos(PL.yaw) * 2.2;
-    if (Math.hypot(x, z) > W.LIMIT - 3) { A.play('deny'); return; }
-    RB.place(r, x, z, PL.yaw, G.sec); A.play('thump'); V.kickDust(x, B.groundAt(x, z) + 0.1, z, 10, 1);
+    if (!W.inside(x, z, 2)) { A.play('deny'); return; }
+    RB.place(r, x, z, PL.yaw); A.play('thump'); V.kickDust(x, B.groundAt(x, z) + 0.1, z, 10, 1);
     UI.toast(D.percentClean() >= DONE_AT ? 'Hier ist alles sauber – der Roboter hat nichts zu tun. Nimm ihn mit E wieder mit.' : 'Putzroboter abgesetzt. Er legt gleich los.', '', 4); save();
   }
   function robotSold(n, g) {
@@ -767,7 +740,7 @@
   const robotCtx = { sec: 1, sim: true, hub: null, onSell: robotSold, time: 0 };
   function updateRobots(dt) {
     if (!RB.list.length) return;
-    robotCtx.sec = G.sec; robotCtx.sim = !MP.guest; robotCtx.time = time; robotCtx.hub = B.points.find(p => p.id === 'silo' || p.id === 'post') || LC.Map.home;
+    robotCtx.sim = !MP.guest; robotCtx.time = time; robotCtx.hubs = robotCtx.hubs || { 1: B.points.find(p => p.id === 'silo'), 2: B.points.find(p => p.id === 'post') };
     RB.update(dt, robotCtx);
   }
   // Mehrspieler: mitfahren und den Bordsauger bedienen, während ein anderer fährt
@@ -811,16 +784,13 @@
     } else { A.play('deny'); UI.toast('Dein Behälter ist leer – nichts zum Einsacken.', '', 2.2); }
   }
   const sellTo = new THREE.Vector3();
-  // steht man (zu Fuß oder im Buggy) vor dem Tunnel?
+  // steht man (zu Fuß oder im Buggy) vor dem geschlossenen Tor am Pass?
   function atTunnel() {
-    const pt = B.portals[G.sec];
-    return Math.hypot(PL.pos.x - pt.x, PL.pos.z - pt.z) < (BG.driving ? 11 : 9);
+    if (W.open) return false;
+    const pt = B.portals[1];
+    return Math.hypot(PL.pos.x - pt.x, PL.pos.z - pt.z) < (BG.driving ? 13 : 10);
   }
-  function useTunnel() {
-    if (MP.guest) { A.play('deny'); UI.toast('Durch den Tunnel fährt der Gastgeber (' + MP.nameOf('H') + ') – alle kommen dann mit.', '', 4); return; }
-    if (!G.up.tunnel) { A.play('deny'); UI.toast('Der Tunnel ist noch gesperrt. Freischalten in der Werkstatt (12.000 ¢).', '', 4); return; }
-    travel();
-  }
+  function useTunnel() { A.play('deny'); UI.toast('Der Pass nach Sektor 2 ist noch gesperrt. Freischalten in der Werkstatt (12.000 ¢).', '', 4); }
   function interact() {
     if (selling) return;
     if (riding) { stopRide(); return; }
@@ -1070,13 +1040,13 @@
       findNear();
       if (selling) UI.prompt(null);
       else if (driving) {
-        if (atTunnel()) UI.prompt(G.up.tunnel ? '<kbd>E</kbd>Durch den Tunnel nach ' + (G.sec === 1 ? 'Sektor 2' : 'Sektor 1') + ' fahren' : 'Tunnel nach Sektor 2 – noch gesperrt (Werkstatt)');
+        if (atTunnel()) UI.prompt('Pass nach Sektor 2 – noch gesperrt (Werkstatt)');
         else if (BG.atStation() && BG.total() > 0.05) UI.prompt('<kbd>E</kbd>Buggy entladen<em>+ ' + UI.n0(Math.round(buggyWorth())) + ' ¢</em>');
         else if (Math.abs(BG.speed) < 0.6) UI.prompt('<kbd>E</kbd>Aussteigen');
         else UI.prompt(null);
       }
       else if (nearPoint && nearPoint.id === 'shop') UI.prompt('<kbd>E</kbd>Werkstatt öffnen');
-      else if ((!nearPoint || nearPoint.id === 'tunnel') && atTunnel()) UI.prompt(MP.guest ? 'Tunnel – der Gastgeber fährt durch, alle kommen mit' : G.up.tunnel ? '<kbd>E</kbd>Durch den Tunnel nach ' + (G.sec === 1 ? 'Sektor 2' : 'Sektor 1') + ' gehen' : 'Tunnel nach Sektor 2 – noch gesperrt (Werkstatt)');
+      else if ((!nearPoint || nearPoint.id === 'tunnel') && atTunnel()) UI.prompt('Pass nach Sektor 2 – noch gesperrt (Werkstatt)');
       else if (nearPoint && nearPoint.id !== 'tunnel') UI.prompt(tankTotal() + G.carry.length >= 0.05 ? '<kbd>E</kbd>Staub ' + (nearPoint.id === 'post' ? 'am Außenposten abgeben' : 'ins Staublager geben') + '<em>+ ' + UI.n0(Math.round(tankWorth())) + ' ¢</em>' : (nearPoint.id === 'post' ? 'Außenposten' : 'Staublager') + ' – du hast noch keinen Staub dabei');
       else if (riding) UI.prompt('<kbd>E</kbd>Aussteigen');
       else if (nearBuggy) UI.prompt(MP.active && MP.drv && MP.drv !== MP.id ? '<kbd>E</kbd>Mitfahren und den Bordsauger bedienen' : '<kbd>E</kbd>In den Buggy steigen');
@@ -1085,16 +1055,24 @@
       else if (!BG.driving && !MP.guest && RB.packed().length) UI.prompt('<kbd>R</kbd>Putzroboter absetzen' + (RB.packed().length > 1 ? '<em>' + RB.packed().length + ' im Gepäck</em>' : ''));
       else UI.prompt(null);
 
+      // In welchem Krater bin ich? (Trennlinie mit etwas Spiel, damit es am Pass nicht flackert)
+      const sdv = W.side(PL.pos.x, PL.pos.z);
+      if (sdv > 3 && G.sec !== 2) { setSec(2); UI.toast('SEKTOR 2', 'big', 4); if (!G.stats.sec2Seen) { G.stats.sec2Seen = true; UI.toast('Roststaub, soweit das Auge reicht. Abgeben am Außenposten.', '', 6); } }
+      else if (sdv < -3 && G.sec !== 1) { setSec(1); UI.toast('SEKTOR 1', 'big', 4); }
+
       // Sektor fertig?
-      const pc = D.percentClean(), dk = G.sec === 1 ? 'sectorDone' : 'sector2Done', bk = G.sec === 1 ? 'bonusPaid' : 'bonus2Paid', bonus = G.sec === 1 ? 2500 : 8000;
-      if (!MP.guest && !G.stats[dk] && pc >= DONE_AT) {
-        G.stats[dk] = true;
-        A.play('goal'); UI.toast(W.cfg.name.toUpperCase() + ' IST BLITZBLANK!', 'big', 6);
-        const pay = !G.stats[bk];
-        if (pay) { G.stats[bk] = true; G.money += bonus; G.stats.earned += bonus; UI.toast('Sektor-Bonus: + ' + UI.n0(bonus) + ' ¢', 'gold', 6); }
-        save(); MP.pushWorld(); MP.event({ k: 'done', bonus: pay ? bonus : 0 });
+      const pc = D.percentClean(), dk = G.sec === 1 ? 'sectorDone' : 'sector2Done';
+      for (let sn = 1; sn <= 2; sn++) {
+        const k = sn === 1 ? 'sectorDone' : 'sector2Done', bk = sn === 1 ? 'bonusPaid' : 'bonus2Paid', bonus = sn === 1 ? 2500 : 8000, p2 = D.percentOf(sn);
+        if (!MP.guest && !G.stats[k] && p2 >= DONE_AT) {
+          G.stats[k] = true;
+          A.play('goal'); UI.toast('SEKTOR ' + sn + ' IST BLITZBLANK!', 'big', 6);
+          const pay = !G.stats[bk];
+          if (pay) { G.stats[bk] = true; G.money += bonus; G.stats.earned += bonus; UI.toast('Sektor-Bonus: + ' + UI.n0(bonus) + ' ¢', 'gold', 6); }
+          save(); MP.pushWorld(); MP.event({ k: 'done', sec: sn, bonus: pay ? bonus : 0 });
+        }
+        W.tu[sn].uHint.value = (!G.stats[k] && p2 > 0.9) ? U.smoothstep(0.9, 0.95, p2) * 0.9 : 0;
       }
-      W.terrainUniforms.uHint.value = (!G.stats[dk] && pc > 0.9) ? U.smoothstep(0.9, 0.95, pc) * 0.9 : 0;
       if (pc > 0.9 && !G.stats[dk] && !hintShown[G.sec]) { hintShown[G.sec] = true; UI.toast('Staub-Scanner an: Die letzten Reste leuchten orange.', '', 6); }
 
       // Fast fertig: Pfeile und Lichtsäulen zeigen die letzten Staubreste
@@ -1169,7 +1147,7 @@
     tp: (x, z, yaw, pitch) => { PL.reset(x, z, yaw || 0); if (pitch != null) PL.pitch = pitch; },
     fire: v => { fire = v; }, money: v => { G.money += v; }, interact, buy,
     sim: (sec, fn) => { const n = Math.round(sec * 60); for (let i = 0; i < n; i++) { if (fn) fn(i / 60); update(1 / 60); } },
-    PL, G, V, D, SK, BG, CS, GL, MP, W, travel, enterSector, setTool, sackKey, applyState, openMap, openGlobe, closeMap, startEmote, startPlay,
+    PL, G, V, D, SK, BG, CS, GL, MP, W, setSec, setTool, sackKey, applyState, openMap, openGlobe, closeMap, startEmote, startPlay,
     info: () => ({ state, pc: D.percentClean(), tank: tankTotal(), money: G.money, pos: PL.pos.toArray(), post: P.enabled, target: V.target })
   };
 

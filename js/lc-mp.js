@@ -204,7 +204,7 @@
         N.toGuest(null, { t: 'p', id, s: m.s, b: m.b }, id);
         break;
       case 'o':
-        if (m.c !== G.sec || !Array.isArray(m.o)) break;
+        if (!Array.isArray(m.o)) break;
         applyOps(m.o, true);
         N.toGuest(null, { t: 'o', c: m.c, o: m.o }, id);
         break;
@@ -276,7 +276,7 @@
     if (!MP.ready) return;
     switch (m.t) {
       case 'p': setPState(m.id, m.s, m.b); break;
-      case 'o': if (m.c === W.sec && Array.isArray(m.o)) applyOps(m.o, true); break;
+      case 'o': if (Array.isArray(m.o)) applyOps(m.o, true); break;
       case 'w': applyWorld(m); break;
       case 'ev': ctx.event(m); break;
       case 'sk+': if (!SK.byId(m.id)) { SK.throwSack({ x: m.p[0], y: m.p[1], z: m.p[2] }, { x: m.d[0], z: m.d[1] }, m.n, m.g, m.id); } break;

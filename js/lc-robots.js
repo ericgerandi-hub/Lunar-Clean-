@@ -57,13 +57,13 @@
     (Array.isArray(arr) ? arr : []).slice(0, Math.min(count, RB.MAX)).forEach(a => make({ sec: +a[0] === 2 ? 2 : 1, x: +a[1] || 0, z: +a[2] || 0, n: Math.max(0, +a[3] || 0), g: Math.max(0, +a[4] || 0), packed: !!a[5] }));
     while (RB.list.length < Math.min(count, RB.MAX)) make({ packed: true });
   };
-  RB.nearest = function (x, z, maxD, sec) {
+  RB.nearest = function (x, z, maxD) {
     let best = null, bd = maxD;
-    RB.list.forEach(r => { if (r.packed || r.sec !== sec) return; const d = Math.hypot(r.x - x, r.z - z); if (d < bd) { bd = d; best = r; } });
+    RB.list.forEach(r => { if (r.packed) return; const d = Math.hypot(r.x - x, r.z - z); if (d < bd) { bd = d; best = r; } });
     return best;
   };
   RB.pack = function (r) { r.packed = true; r.has = false; };
-  RB.place = function (r, x, z, h, sec) { r.packed = false; r.sec = sec; r.x = x; r.z = z; r.h = h; r.ax = x; r.az = z; r.state = r.n + r.g >= RB.CAP * 0.98 ? 'home' : 'seek'; r.has = false; r.scanT = 0.3; r.ban = []; r.y = B.groundAt(x, z); };
+  RB.place = function (r, x, z, h) { r.packed = false; r.sec = W.secAt(x, z); r.x = x; r.z = z; r.h = h; r.ax = x; r.az = z; r.state = r.n + r.g >= RB.CAP * 0.98 ? 'home' : 'seek'; r.has = false; r.scanT = 0.3; r.ban = []; r.y = B.groundAt(x, z); };
 
   // Mehrspieler: Gastgeber verschickt, Gäste zeigen nur an
   RB.net = () => RB.list.map(r => [r.sec, +r.x.toFixed(2), +r.z.toFixed(2), +r.h.toFixed(2), r.packed ? 1 : 0, r.state === 'home' || r.state === 'unload' ? 1 : r.state === 'idle' ? 2 : 0]);
@@ -71,7 +71,7 @@
     while (RB.list.length > arr.length) { scene.remove(RB.list.pop().m.g); }
     arr.forEach((a, i) => {
       let r = RB.list[i]; if (!r) { r = make({}); r.x = a[1]; r.z = a[2]; r.h = a[3]; }
-      if (r.sec !== a[0] || r.packed !== !!a[4] || Math.hypot(r.x - a[1], r.z - a[2]) > 10) { r.x = a[1]; r.z = a[2]; r.h = a[3]; }
+      if (r.packed !== !!a[4] || Math.hypot(r.x - a[1], r.z - a[2]) > 10) { r.x = a[1]; r.z = a[2]; r.h = a[3]; }
       r.sec = a[0]; r.nx = a[1]; r.nz = a[2]; r.nh = a[3]; r.packed = !!a[4]; r.state = a[5] === 1 ? 'home' : a[5] === 2 ? 'idle' : 'work';
     });
   };
@@ -115,9 +115,11 @@
   // o: { sec, sim, hub: {x, z}, onSell(n, g), time }
   RB.update = function (dt, o) {
     for (let i = 0; i < RB.list.length; i++) {
-      const r = RB.list[i], m = r.m, here = !r.packed && r.sec === o.sec;
+      const r = RB.list[i], m = r.m, here = !r.packed;
       m.g.visible = here;
       if (!here) continue;
+      r.sec = W.secAt(r.x, r.z);
+      const hub = o.hubs[r.sec];
       r.spd = 0;
       if (!o.sim) {
         // Gast: weich zur gemeldeten Stelle
@@ -128,7 +130,7 @@
         const full = r.n + r.g >= RB.CAP - 0.5;
         if (full && r.state !== 'unload') r.state = 'home';
         if (r.state === 'home') {
-          if (drive(r, dt, o.hub.x, o.hub.z, 4.6) < 2.6) { r.state = 'unload'; r.sellT = 1.8; }
+          if (drive(r, dt, hub.x, hub.z, 4.6) < 2.6) { r.state = 'unload'; r.sellT = 1.8; }
         } else if (r.state === 'unload') {
           r.sellT -= dt;
           if (r.sellT <= 0) { if (r.n + r.g > 0.05) o.onSell(r.n, r.g); r.n = r.g = 0; r.state = 'seek'; r.has = false; r.scanT = 0; }
@@ -137,12 +139,12 @@
           const dist = r.has ? Math.hypot(r.tx - r.x, r.tz - r.z) : 1e9;
           if (r.scanT <= 0 && (!r.has || dist < 0.7 || r.state === 'idle')) {
             r.scanT = r.state === 'idle' ? 4 : 0.5;
-            if (pickTarget(r, o.sec)) r.state = 'seek';
+            if (pickTarget(r, r.sec)) r.state = 'seek';
             else if (r.n + r.g > 0.5) r.state = 'home';
             else r.state = 'idle';
           }
           if (r.state === 'seek' && r.has) drive(r, dt, r.tx, r.tz, r.work > 0 ? 1.5 : 4.2);
-          else if (r.state === 'idle') { const hd = Math.hypot(o.hub.x - r.x, o.hub.z - r.z); if (hd > 9 + i * 2.2) drive(r, dt, o.hub.x, o.hub.z, 3.5); }
+          else if (r.state === 'idle') { const hd = Math.hypot(hub.x - r.x, hub.z - r.z); if (hd > 9 + i * 2.2) drive(r, dt, hub.x, hub.z, 3.5); }
           // saugen (10-mal pro Sekunde reicht)
           r.wait -= dt; r.work = Math.max(0, (r.work || 0) - dt);
           if (r.wait <= 0 && r.state !== 'idle') {
