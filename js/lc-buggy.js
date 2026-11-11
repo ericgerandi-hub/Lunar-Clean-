@@ -215,6 +215,18 @@
     }
   };
 
+  // Mehrspieler: ein Mitspieler fährt – Buggy weich an dessen gemeldete Stelle ziehen
+  BG.busy = false;
+  BG.remote = function (dt, x, z, heading, speed, suck) {
+    const p = BG.pos, k = Math.min(1, dt * 10);
+    if (Math.hypot(x - p.x, z - p.z) > 12) { p.x = x; p.z = z; BG.heading = heading; }
+    p.x += (x - p.x) * k; p.z += (z - p.z) * k;
+    let dh = heading - BG.heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); BG.heading += dh * k;
+    BG.speed = speed; BG.suck = suck;
+    settle(dt, false);
+    for (let i = 0; i < 4; i++) wheels[i].rotation.x -= speed * dt / 0.54;
+  };
+
   BG.applyCamera = function (cam) {
     tmp.set(0, 2.02, -0.02).applyMatrix4(car.matrixWorld); cam.position.copy(tmp);
     e1.set(BG.lookPitch, BG.lookYaw, 0); q1.setFromEuler(e1);
@@ -227,8 +239,9 @@
     fill.scale.y = Math.max(0.001, total() / BG.CAP); fill.visible = total() > 1;
     const gr = total() > 0 ? BG.load.g / total() : 0;
     fill.material.color.setRGB(0.10, U.lerp(0.085, 0.2, gr), U.lerp(0.07, 0.4, gr));
-    headL.intensity = BG.driving ? 0.5 + 2.2 * dark : 0;
-    BG.beaconMat.emissiveIntensity = BG.driving ? ((t * 1.4) % 1 < 0.5 ? 3 : 0.2) : 0.2;
+    const on = BG.driving || BG.busy;
+    headL.intensity = on ? 0.5 + 2.2 * dark : 0;
+    BG.beaconMat.emissiveIntensity = on ? ((t * 1.4) % 1 < 0.5 ? 3 : 0.2) : 0.2;
     const gr8 = BG.station.grate;
     if (gr8) gr8.material.opacity += ((BG.unloading ? 0.5 + 0.3 * Math.sin(t * 20) : 0) - gr8.material.opacity) * Math.min(1, dt * 8);
     if (hoseFrom) {

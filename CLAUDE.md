@@ -22,6 +22,8 @@ Spielplan (alle Entscheidungen des Nutzers): https://claude.ai/artifact/FeVhH9CZ
   - `lc-globe.js` ganzer Mond als Kugel (zweimal M) und Weltraum-Szene fürs Intro
   - `lc-cutscene.js` Intro (Anflug, Absturz, Blackout, Aufwachen), überspringbar
   - `lc-ui.js` HUD, Werkstatt-Fenster
+  - `lc-net.js` Verbindung zwischen den Browsern (PeerJS 1.5.4 von unpkg, Stern-Form; `?net=bc` = BroadcastChannel zum Testen ohne Internet)
+  - `lc-mp.js` Mehrspieler: Protokoll, Mitspieler-Figuren, gemeinsamer Buggy, Säcke, Kasse
   - `lc-main.js` Spielstand, Upgrades (`UP`), Preise, Ziele (`GOALS`), Hauptschleife, Speichern
 
 ## Nach JEDER Änderung
@@ -38,8 +40,11 @@ Spielplan (alle Entscheidungen des Nutzers): https://claude.ai/artifact/FeVhH9CZ
   Chromium mit `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader` macht echte Bilder (langsam, aber korrekt).
 - Farben im Boden-Shader sind linear; Helligkeit regeln über `P.exposure` (lc-post.js) und die Sonne (lc-world.js).
 - Gelände ändern = `heightAt` ändern; Gitter, Spieler, Zielring und Felsen lesen alle daraus.
-- Mehrspieler ist geplant (2–3 Spieler, PeerJS wie bei Orbitalbrigade `ob-net.js`/`ob-mp.js`, Host rechnet die Welt).
-  Deshalb: Spielzustand in `LC.G` und Staubänderungen nur über `LC.Dust.suck` halten.
+- Mehrspieler (seit 0.6.0, bis 4 Spieler, Raum-Code): der Gastgeber besitzt Staubkarte, Geld, Upgrades, Säcke, Buggy und Sektor (gemeinsame Kasse).
+  Gäste melden Putz-Bewegungen (`D.suck` ist in lc-mp.js umhüllt), Geld/Ladung als Differenzen (`d`), Käufe/Säcke/Buggy als Anfragen; der Gastgeber schickt 4-mal pro Sekunde `w` (Kasse, Buggy)
+  und alle 50 s die ganze Staubkarte. Gäste speichern nie (`MP.guest`/`MP.wasGuest`), nur der Gastgeber fährt durch den Tunnel (alle kommen mit).
+  Neues im Spiel deshalb immer so bauen: Zustand in `LC.G`, Staub nur über `LC.Dust.suck`, und in `mpctx` (lc-main.js) bzw. lc-mp.js mit abgleichen.
+  Test mit zwei Seiten: Skript `mp.js` (Playwright, `?test=1&net=bc&room=TEST`, `LC.debug.MP.openAs/join`). Echte PeerJS-Verbindung geht in der Sandbox nicht.
 - Wunsch des Nutzers: viele verschiedene Putz-Werkzeuge, die man nacheinander kauft (nicht nur einen Sauger upgraden);
   große Fahrzeuge kommen spät und haben eine eigene Entladestation. Werkzeug-Daten: `TOOLS` und `UP` in `lc-main.js`.
 - Die Schattenkarte der Sonne steht still (`shadowMap.autoUpdate = false`); bewegte Dinge brauchen `shadowFrames = 2` oder einen eigenen weichen Schatten (Buggy).
@@ -50,6 +55,6 @@ Spielplan (alle Entscheidungen des Nutzers): https://claude.ai/artifact/FeVhH9CZ
 - Sektoren: `W.SECTORS` (lc-world.js). `setupSector(n)` in lc-main.js baut Gelände, Felsen, Bauten und Karte um; `enterSector(n)` nimmt Staubkarte
   (`D.leave/enter`, Zwischenlager `D.stash`) und Säcke mit. Bauten von Sektor 1 hängen an `B.root1`, der Außenposten an `B.root2`.
   Hindernisse/Benutzen-Punkte je Sektor: `B.cols`, `B.pts`. Tunnel: `B.portals`, Fahrt: `travel()`. Der Buggy merkt sich seinen Sektor (`BG.sec`).
-- Reihenfolge, die der Nutzer will: Mehrspieler, Automatisierung (Putzroboter, Luftkanäle, Staubpresse), Rakete als echtes Ziel, eigene Gebäude an der Basis bauen.
+- Reihenfolge, die der Nutzer will: (Mehrspieler ist fertig,) Automatisierung (Putzroboter, Luftkanäle, Staubpresse), Rakete als echtes Ziel, eigene Gebäude an der Basis bauen.
 - Noch nicht gebaut (siehe Spielplan): Gleiter, Raumschiff, Putzroboter, Luftkanäle, Staubpresse, Drohnen,
   Händler mit schwankenden Preisen, Hangar/Garage/Solarpark, Rakete als Spielziel, Handy-Steuerung.

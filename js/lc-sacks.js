@@ -44,7 +44,9 @@
     return grp;
   }
 
+  SK.seq = 0;                 // laufende Nummer (im Mehrspieler vergibt sie der Gastgeber)
   function add(s) {
+    if (!s.id) s.id = ++SK.seq; else if (s.id > SK.seq) SK.seq = s.id;
     s.mesh = makeMesh(s);
     s.mesh.position.set(s.x, s.y, s.z);
     scene.add(s.mesh); SK.list.push(s);
@@ -52,9 +54,9 @@
   }
 
   // Sack mit Inhalt (n, g in kg) von einer Stelle aus werfen
-  SK.throwSack = function (from, dir, n, g) {
-    if (SK.list.length >= SK.MAX) return null;
-    const s = add({ x: from.x, y: from.y, z: from.z, n, g, vx: dir.x * 3.4, vy: 1.7, vz: dir.z * 3.4, fly: true, spin: (Math.random() - 0.5) * 3 });
+  SK.throwSack = function (from, dir, n, g, id) {
+    if (SK.list.length >= SK.MAX && !id) return null;
+    const s = add({ id, x: from.x, y: from.y, z: from.z, n, g, vx: dir.x * 3.4, vy: 1.7, vz: dir.z * 3.4, fly: true, spin: (Math.random() - 0.5) * 3 });
     return s;
   };
 
@@ -95,6 +97,13 @@
     SK.list.splice(i, 1); scene.remove(s.mesh);
   };
   SK.clear = function () { SK.list.slice().forEach(SK.remove); };
+  SK.byId = function (id) { for (let i = 0; i < SK.list.length; i++) if (SK.list[i].id === id) return SK.list[i]; return null; };
+  // Mehrspieler: Liste mit Nummern verschicken und übernehmen
+  SK.netList = function () { return SK.list.map(s => [s.id, +s.x.toFixed(2), +s.z.toFixed(2), +s.n.toFixed(2), +s.g.toFixed(2)]); };
+  SK.netLoad = function (arr) {
+    SK.clear();
+    (arr || []).forEach(a => { const x = +a[1] || 0, z = +a[2] || 0; add({ id: +a[0], x, z, y: B.groundAt(x, z), n: Math.max(0, +a[3] || 0), g: Math.max(0, +a[4] || 0), fly: false }); });
+  };
 
   SK.serialize = function () { return SK.list.map(s => [+s.x.toFixed(2), +s.z.toFixed(2), +s.n.toFixed(2), +s.g.toFixed(2)]); };
   SK.load = function (arr) {

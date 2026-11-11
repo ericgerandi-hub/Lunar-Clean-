@@ -3,8 +3,8 @@
    Lunar Clean – Hauptprogramm: Spielstand, Regeln, Schleife
    ========================================================= */
 (function (LC) {
-  const U = LC.U, W = LC.World, D = LC.Dust, B = LC.Base, PL = LC.Player, V = LC.Vacuum, P = LC.Post, A = LC.Audio, UI = LC.UI, SK = LC.Sacks, BG = LC.Buggy, AV = LC.Avatar, GL = LC.Globe, CS = LC.Cutscene;
-  const VERSION = '0.5.0';                 // nach jeder Änderung hochzählen
+  const U = LC.U, W = LC.World, D = LC.Dust, B = LC.Base, PL = LC.Player, V = LC.Vacuum, P = LC.Post, A = LC.Audio, UI = LC.UI, SK = LC.Sacks, BG = LC.Buggy, AV = LC.Avatar, GL = LC.Globe, CS = LC.Cutscene, MP = LC.MP;
+  const VERSION = '0.6.0';                 // nach jeder Änderung hochzählen
   const SAVE_KEY = 'lunarclean_save_v1', SET_KEY = 'lunarclean_settings_v1';
   const DONE_AT = 0.9995;                  // Sektor gilt erst als fertig, wenn die Anzeige 100 % zeigt
   const PRICE_N = 2, PRICE_G = 15;         // ¢ pro kg: normaler Staub / Glitzerstaub
@@ -82,7 +82,7 @@
     G.stats = { kg: 0, earned: 0, time: 0, sold: 0, sectorDone: false, sector2Done: false, sec2Seen: false, intro: false, mapSeen: false, emoted: false };
     G.stage = 0;
   }
-  const S = { sens: 1, vol: 0.7, music: true, gfx: 'mittel', full: true };
+  const S = { sens: 1, vol: 0.7, music: true, gfx: 'mittel', full: true, name: '' };
   const val = id => UP[id].vals[G.up[id]];
   const cap = () => val('tank');
   const tankTotal = () => G.tank.n + G.tank.g;
@@ -91,6 +91,7 @@
   const buggyWorth = () => BG.load.n * PRICE_N + BG.load.g * PRICE_G;
 
   function save() {
+    if (MP.guest || MP.wasGuest) return;        // als Gast bleibt der eigene Spielstand unberührt
     try {
       let px = PL.pos.x, pz = PL.pos.z;
       if (BG.driving) { BG.exitPoint(tmpV); px = tmpV.x; pz = tmpV.z; }
@@ -187,8 +188,74 @@
     if (!driving && BG.owned && BG.sec !== to) UI.toast('Dein Buggy steht noch in Sektor ' + BG.sec + '.', '', 5);
     A.play('sold'); UI.toast(W.cfg.name.toUpperCase(), 'big', 4);
     if (to === 2 && !G.stats.sector2Done) UI.toast('Roststaub, soweit das Auge reicht. Abgeben am Außenposten.', '', 6);
-    save();
+    save(); MP.traveled();
   }
+
+  // ---------- Mehrspieler: was lc-mp von hier braucht ----------
+  const mpctx = {
+    version: VERSION,
+    upName: id => UP[id] ? UP[id].name : id,
+    shadow: () => { shadowFrames = 2; },
+    // eigener Zustand für die Mitspieler: [x, y, z, Blick, Neigung, Merker, Werkzeug, Emote, Emote-Zeit]
+    pstate: () => [+PL.pos.x.toFixed(2), +PL.pos.y.toFixed(2), +PL.pos.z.toFixed(2), +PL.yaw.toFixed(3), +PL.pitch.toFixed(2),
+      (state === 'play' && !BG.driving && V.intensity > 0.2 ? 1 : 0) | (PL.jetting ? 2 : 0) | (PL.crouch ? 4 : 0) | (BG.driving ? 8 : 0),
+      MP.TOOL_IDS.indexOf(G.tool), emote ? AV.EMOTES.findIndex(e => e.id === emote.id) : -1, emote ? +emote.t.toFixed(2) : 0],
+    snapshot: () => ({ sec: G.sec, dust: D.serialize(), sacks: SK.netList() }),
+    // Gastgeber kauft im Auftrag eines Gastes
+    buyFor: id => { const u = UP[id]; if (!u) return false; const lv = G.up[id]; if (lv >= u.max || G.money < u.costs[lv] || (u.needs && !G.up[u.needs])) return false; buyCore(id); if (state === 'shop') renderShop(); save(); return true; },
+    // Gast: Welt vom Gastgeber übernehmen
+    applySnap: (kind, sec, dust, sacks, eco) => {
+      if (kind === 'sync') { D.deserialize(dust); return; }
+      if (BG.driving) { BG.driving = false; BG.speed = 0; BG.suck = 0; A.setBuggy(false, 0); }
+      selling = null; BG.unloading = false;
+      if (kind === 'join') { MP.wasGuest = true; freshState(); G.stats.intro = G.stats.mapSeen = G.stats.emoted = true; BG.setOwned(false); BG.load.n = BG.load.g = 0; D.stash = {}; D.pc = {}; SK.stash = {}; }
+      if (W.sec !== sec) setupSector(sec);
+      D.configure(); if (!D.deserialize(dust)) D.reset();
+      SK.netLoad(sacks); G.sec = sec; G.marks = G.marksAll[sec]; LC.Map.marks = G.marks;
+      if (kind === 'join') {
+        mpctx.applyEco(eco); G.tool = bestTool(); applyState();
+        const a = sec === 1 ? B.spawn : B.arrive[2], k = MP.myColor || 1;
+        PL.reset(a.x + Math.cos(k * 2.1) * 2.2, a.z + Math.sin(k * 2.1) * 2.2, sec === 1 ? B.spawn.yaw : Math.atan2(a.x, a.z));
+      } else {
+        const a = B.arrive[sec]; PL.reset(a.x + (Math.random() - 0.5) * 3, a.z + (Math.random() - 0.5) * 3, Math.atan2(a.x, a.z));
+        $('black').style.opacity = 1; travelFade = 1.4; A.play('sold'); UI.toast(W.cfg.name.toUpperCase(), 'big', 4);
+      }
+      shadowFrames = 3;
+    },
+    // Gast: Geld-Stand, Upgrades und Ziele kommen vom Gastgeber
+    applyEco: e => {
+      let ch = false;
+      UP_ORDER.forEach(k => {
+        const v = U.clamp(Math.floor(+e.up[k] || 0), 0, UP[k].max); if (v === G.up[k]) return;
+        G.up[k] = v; ch = true;
+        if (k === 'repair') V.setRepaired(v > 0);
+        if (k === 'tunnel' && B.portalLight) B.portalLight.emissive.setHex(v ? 0x3dff7a : 0xff2a1a);
+        if (k === 'buggy') BG.setOwned(v > 0);
+      });
+      ['sectorDone', 'sector2Done', 'sec2Seen', 'bonusPaid', 'bonus2Paid'].forEach(k => { G.stats[k] = !!e.stats[k]; });
+      G.stage = +e.stage || 0;
+      if (ch) { BG.CAP = val('bcap'); BG.headR = val('bhead'); const t = TOOLS.filter(x => x.id === G.tool)[0]; if (!t || !t.has()) setTool(bestTool(), true); }
+      if (state === 'shop') { if (ch || Math.floor(e.money) !== lastShopMoney) { lastShopMoney = Math.floor(e.money); renderShop(); } }
+    },
+    event: m => {
+      if (m.k === 'buy') {
+        if (m.by === MP.id) { A.play('buy'); if (m.id === 'shovel' || m.id === 'vac' || m.id === 'xl') setTool(m.id, true); if (UP[m.id].help && G.up[m.id] === 1) showHelp(m.id, true); }
+        else UI.toast(MP.nameOf(m.by) + ' hat gekauft: ' + UP[m.id].name, 'gold', 4);
+        if (m.id === 'buggy') UI.toast('Der Mondbuggy steht neben der Basis bereit!', 'gold', 5);
+      } else if (m.k === 'done') {
+        A.play('goal'); UI.toast(W.cfg.name.toUpperCase() + ' IST BLITZBLANK!', 'big', 6);
+        if (m.bonus) UI.toast('Sektor-Bonus: + ' + UI.n0(m.bonus) + ' ¢', 'gold', 6);
+      }
+    },
+    gotSack: (n, g, bg) => {
+      if (bg) { BG.load.n += n; BG.load.g += g; A.play('thump'); UI.toast('Sack eingeladen', '', 1.5); }
+      else if (G.carry.length < SK.CARRY) { G.carry.push({ n, g }); A.play('click'); }
+      else throwSack(n, g);
+    },
+    enterBuggy: () => { if (state === 'play' && !BG.driving && !selling && !emote) enterBuggy(); else MP.leftBuggy(); },
+    exitBuggy: () => { if (BG.driving) { selling = null; BG.unloading = false; BG.driving = false; BG.speed = 0; BG.suck = 0; A.setBuggy(false, 0); BG.exitPoint(tmpV); PL.reset(tmpV.x, tmpV.z, BG.heading); } }
+  };
+  let lastShopMoney = -1;
 
   function applyState() {
     clearStatic();
@@ -276,6 +343,7 @@
     window.addEventListener('resize', () => resize(false));
 
     LC.Map.init();
+    MP.init(mpctx, scene);
     freshState();
     if (!load()) { freshState(); toSector1(); D.reset(); SK.clear(); BG.setOwned(false); PL.reset(B.spawn.x, B.spawn.z, B.spawn.yaw); }
     applyState();
@@ -314,7 +382,7 @@
     if (s !== 'play') { fire = false; PL.keys = {}; PL.mdx = PL.mdy = 0; A.setJet(0); endEmote(); setEmoteMenu(false); }
     if (s !== 'cut') { $('black').style.opacity = 0; $('flash').style.opacity = 0; }
     showEl('keys', s !== 'map');
-    if (s === 'pause') renderStats();
+    if (s === 'pause') { renderStats(); showEl('row-wipe', !MP.active); $('pause-sub').textContent = MP.guest ? 'Mehrspieler · Raum ' + MP.code + ' · Die Welt gehört ' + (MP.hostName || 'dem Gastgeber') + ' und wird dort gespeichert.' : MP.host ? 'Mehrspieler · Raum ' + MP.code + ' · Das Spiel läuft für die anderen weiter.' : 'Dein Fortschritt wird automatisch gespeichert.'; }
     if (s === 'shop') renderShop();
     if (s === 'play') { keysT = keysT || time + 16; }
     if (s !== 'map' && LC.Map.open) LC.Map.setOpen(false);
@@ -448,15 +516,21 @@
     });
     document.addEventListener('keyup', e => { PL.keys[e.code] = false; });
     window.addEventListener('blur', () => { PL.keys = {}; fire = false; });
-    window.addEventListener('beforeunload', () => { if (state !== 'menu' || G.stats.time > 0) save(); });
+    window.addEventListener('beforeunload', () => { if (state !== 'menu' || G.stats.time > 0) save(); if (MP.active) LC.Net.close(); });
   }
 
   function bindUI() {
     const e = UI.el;
-    e['btn-play'].addEventListener('click', () => startPlay(!G.stats.intro && G.stats.time < 1));
-    e['btn-new'].addEventListener('click', () => { newGame(); shadowFrames = 3; startPlay(true); });
+    e['btn-play'].addEventListener('click', () => startPlay(!MP.guest && !G.stats.intro && G.stats.time < 1));
+    e['btn-new'].addEventListener('click', () => { if (MP.active) MP.leave(); newGame(); shadowFrames = 3; startPlay(true); });
     e['btn-resume'].addEventListener('click', () => startPlay());
-    e['btn-tomenu'].addEventListener('click', () => { save(); UI.el['btn-play'].textContent = 'Weiterspielen'; UI.show('btn-new', true); setState('menu'); });
+    e['btn-tomenu'].addEventListener('click', () => {
+      if (MP.guest || mpLost) { location.reload(); return; }       // zurück zum eigenen Spielstand
+      if (BG.driving) exitBuggy();
+      save(); if (MP.active) { MP.leave(); UI.toast('Mehrspieler-Raum geschlossen.', '', 3); }
+      UI.el['btn-play'].textContent = 'Weiterspielen'; UI.show('btn-new', true); setState('menu');
+    });
+    bindMP();
     e['btn-shopclose'].addEventListener('click', closeShop);
     $('btn-info').addEventListener('click', hideHelp);
     let wipeArmed = 0;
@@ -475,6 +549,63 @@
       S.gfx = e['set-gfx'].value; saveSettings(); perfDone = true;
       pxRatio = pixelRatio(); renderer.setPixelRatio(pxRatio); resize(false);
     });
+  }
+
+  // ---------- Mehrspieler-Fenster ----------
+  let mpLost = false;
+  function bindMP() {
+    const msg = t => { $('mp-msg').textContent = t || ''; };
+    const busy = on => { ['mp-host', 'mp-join', 'mp-back'].forEach(id => { $(id).disabled = on; }); };
+    const name = () => { const n = ($('mp-name').value || '').trim().slice(0, 14) || 'Astronaut'; S.name = n; saveSettings(); return n; };
+    const view = v => { showEl('mp-a', v === 'a'); showEl('mp-b', v === 'b'); showEl('mp-namerow', v === 'a'); };
+    const list = () => { const l = [MP.name + ' (du)']; if (MP.guest && MP.hostName) l.push(MP.hostName + ' (Gastgeber)'); for (const k in MP.players) if (!(MP.guest && k === 'H')) l.push(MP.players[k].name); $('mp-list').textContent = MP.active ? 'Dabei: ' + l.join(' · ') : ''; };
+    const why = { notfound: 'Kein Spiel mit diesem Code gefunden. Stimmt der Code, und hat dein Freund das Spiel schon eröffnet?', network: 'Keine Verbindung. Prüfe dein Internet und versuch es noch einmal.', version: 'Ihr habt verschiedene Spielversionen. Bitte beide die Seite mit Strg+F5 neu laden.', full: 'Das Spiel ist schon voll (höchstens 4 Spieler).', taken: 'Der Code ist gerade vergeben. Versuch es noch einmal.' };
+    mpctx.onRoster = list;
+    MP.onFail = k => { busy(false); msg(why[k] || why.network); };
+    MP.onReady = () => {
+      busy(false); msg(''); view('b'); $('mp-back').textContent = 'Verlassen';
+      $('mp-bt').textContent = 'VERBUNDEN MIT RAUM'; $('mp-big').textContent = MP.code;
+      $('mp-bp').textContent = 'Du spielst in der Welt von ' + (MP.hostName || 'deinem Freund') + '. Geld und Upgrades gehören euch zusammen. Dein eigener Spielstand bleibt, wie er ist.';
+      list(); UI.show('btn-new', false); UI.el['btn-play'].textContent = 'Los geht\'s';
+    };
+    MP.onLost = () => {
+      mpLost = true;
+      if (!TEST && document.pointerLockElement) document.exitPointerLock();
+      if (state !== 'menu') setState('pause');
+      showEl('mp', true); view(''); msg('Die Verbindung zum Gastgeber ist weg. Er hat das Spiel beendet oder sein Internet ist ausgefallen.'); $('mp-back').textContent = 'Zum Hauptmenü'; busy(false);
+    };
+    $('mp-name').value = S.name || '';
+    $('btn-mp').addEventListener('click', () => {
+      showEl('mp', true); msg('');
+      LC.Net.load().then(ok => { if (!ok) msg('Der Mehrspieler konnte nicht geladen werden. Prüfe dein Internet und öffne das Fenster noch einmal.'); });
+      if (MP.active) { view('b'); list(); } else view('a');
+    });
+    $('mp-back').addEventListener('click', () => {
+      if (MP.guest || mpLost) { location.reload(); return; }
+      showEl('mp', false);
+    });
+    $('mp-host').addEventListener('click', () => {
+      if (!LC.Net.available()) { msg('Einen Moment – der Mehrspieler lädt noch …'); return; }
+      busy(true); msg('Raum wird eröffnet …'); A.init();
+      const code = (/[?&]room=([A-Za-z0-9]{4})/.exec(location.search) || [])[1];
+      (code ? MP.openAs(name(), code.toUpperCase()) : MP.open(name())).then(c => {
+        busy(false); msg(''); view('b');
+        $('mp-bt').textContent = 'DEIN CODE'; $('mp-big').textContent = c;
+        $('mp-bp').textContent = 'Sag deinen Freunden diesen Code. Sie klicken im Hauptmenü auf „Mehrspieler“ und dann auf „Beitreten“. Du kannst schon losspielen – sie können jederzeit dazukommen. Der Code steht im Spiel oben rechts.';
+        list();
+      }, e => { busy(false); msg(why[e && e.code] || why.network); });
+    });
+    $('mp-code').addEventListener('keydown', e => { if (e.code === 'Enter') $('mp-join').click(); e.stopPropagation(); });
+    $('mp-name').addEventListener('keydown', e => e.stopPropagation());
+    $('mp-join').addEventListener('click', () => {
+      if (!LC.Net.available()) { msg('Einen Moment – der Mehrspieler lädt noch …'); return; }
+      const code = ($('mp-code').value || '').trim().toUpperCase();
+      if (code.length !== 4) { msg('Der Code hat 4 Zeichen.'); return; }
+      busy(true); msg('Verbinde …'); A.init();
+      MP.join(code, name()).then(() => { msg('Verbunden – Welt wird geladen …'); setTimeout(() => { if (MP.guest && !MP.ready) { MP.leave(); busy(false); msg(why.network); } }, 15000); },
+        e => { MP.leave(); busy(false); msg(why[e && e.code] || why.network); });
+    });
+    $('mp-go').addEventListener('click', () => { showEl('mp', false); startPlay(MP.host && !G.stats.intro && G.stats.time < 1); });
   }
 
   // ---------- Werkstatt ----------
@@ -501,18 +632,26 @@
     showEl('info', true);
   }
   function hideHelp() { showEl('info', false); }
+  // Kauf ausführen (ohne Fenster und Ton) – auch für Käufe der Mitspieler
+  function buyCore(id) {
+    const u = UP[id], lv = G.up[id];
+    G.money -= u.costs[lv]; G.shown = G.money; G.up[id] = lv + 1;
+    if (id === 'repair') V.setRepaired(true);
+    if (id === 'tunnel' && B.portalLight) B.portalLight.emissive.setHex(0x3dff7a);
+    if (id === 'buggy') { BG.setOwned(true); BG.sec = 1; if (G.sec === 1) BG.place(BG.park.x, BG.park.z, BG.park.heading); else { BG.pos.set(BG.park.x, 0, BG.park.z); BG.heading = BG.park.heading; BG.refresh(); } UI.toast('Der Mondbuggy steht neben der Basis bereit!', 'gold', 5); }
+    BG.CAP = val('bcap'); BG.headR = val('bhead');
+  }
   function buy(id) {
     const u = UP[id], lv = G.up[id];
     if (!u || lv >= u.max) return;
     const cost = u.costs[lv];
     if (G.money < cost || (u.needs && !G.up[u.needs])) { A.play('deny'); return; }
-    G.money -= cost; G.shown = G.money; G.up[id] = lv + 1;
+    if (MP.guest) { MP.buy(id); return; }      // der Gastgeber führt den Kauf aus
+    buyCore(id);
     A.play('buy');
-    if (id === 'repair') V.setRepaired(true);
     if (id === 'shovel' || id === 'vac' || id === 'xl') setTool(id, true);
-    if (id === 'tunnel' && B.portalLight) B.portalLight.emissive.setHex(0x3dff7a);
-    if (id === 'buggy') { BG.setOwned(true); BG.place(BG.park.x, BG.park.z, BG.park.heading); UI.toast('Dein Mondbuggy steht neben der Basis bereit!', 'gold', 5); }
     renderShop(); UI.money(G.money, true); save();
+    if (MP.host) { MP.pushWorld(); MP.event({ k: 'buy', id, by: 'H' }); }
     if (u.help && (lv === 0)) showHelp(id, true);
   }
   function openShop() { setState('shop'); A.play('click'); if (!TEST && document.pointerLockElement) document.exitPointerLock(); }
@@ -556,12 +695,16 @@
   function exitBuggy() {
     BG.driving = false; BG.speed = 0; BG.suck = 0; A.setBuggy(false, 0); A.play('click');
     BG.exitPoint(tmpV); PL.reset(tmpV.x, tmpV.z, BG.heading);
+    MP.leftBuggy();
   }
   function throwSack(n, g) {
     PL.forward(tmpV2);
     const dir = { x: -Math.sin(PL.yaw), z: -Math.cos(PL.yaw) };
     tmpV.set(camera.position.x + dir.x * 0.5, camera.position.y - 0.55, camera.position.z + dir.z * 0.5);
-    return SK.throwSack(tmpV, dir, n, g);
+    if (MP.guest) { if (SK.list.length >= SK.MAX) return null; MP.sackThrow(tmpV, dir, n, g); return true; }
+    const s = SK.throwSack(tmpV, dir, n, g);
+    if (s) MP.sackAdded(s, tmpV, dir);
+    return s;
   }
   function sackKey() {
     if (BG.driving || selling) return;
@@ -580,6 +723,7 @@
     return Math.hypot(PL.pos.x - pt.x, PL.pos.z - pt.z) < (BG.driving ? 11 : 9);
   }
   function useTunnel() {
+    if (MP.guest) { A.play('deny'); UI.toast('Durch den Tunnel fährt der Gastgeber (' + MP.nameOf('H') + ') – alle kommen dann mit.', '', 4); return; }
     if (!G.up.tunnel) { A.play('deny'); UI.toast('Der Tunnel ist noch gesperrt. Freischalten in der Werkstatt (12.000 ¢).', '', 4); return; }
     travel();
   }
@@ -602,10 +746,11 @@
       if (nearPoint.id === 'post') sellTo.set(nearPoint.x, nearPoint.y - 1.0, nearPoint.z); else sellTo.copy(B.siloNozzle);
     }
     else if (atTunnel()) useTunnel();
-    else if (nearBuggy) enterBuggy();
+    else if (nearBuggy) { if (MP.tryDrive()) enterBuggy(); }
     else if (nearSack) {
       if (G.carry.length >= SK.CARRY) { A.play('deny'); UI.toast('Mehr als ' + SK.CARRY + ' Säcke kannst du nicht tragen.', '', 2.5); return; }
-      G.carry.push({ n: nearSack.n, g: nearSack.g }); SK.remove(nearSack); shadowFrames = 2; A.play('click');
+      if (MP.guest) { MP.sackTake(nearSack, false); return; }
+      G.carry.push({ n: nearSack.n, g: nearSack.g }); SK.remove(nearSack); MP.sackTaken(nearSack); shadowFrames = 2; A.play('click');
     }
   }
   function updateSelling(dt) {
@@ -649,10 +794,11 @@
     { txt: 'Sektor 1 ist blitzblank! Kauf in der Werkstatt den Tunnel nach Sektor 2 (12.000 ¢).', done: () => G.up.tunnel > 0 },
     { txt: 'Fahr mit dem Buggy zum Tunnel am Kraterrand (lila Quadrat auf der Karte) und drücke E.', done: () => G.stats.sec2Seen },
     { txt: 'Putze Sektor 2. Staub gibst du am Außenposten ab – zu Fuß oder mit dem Buggy.', done: () => G.stats.sector2Done },
-    { txt: 'Auch Sektor 2 ist sauber! Als Nächstes kommen Mitspieler, Maschinen, Basis-Bau und die Rakete.', done: () => false }
+    { txt: 'Auch Sektor 2 ist sauber! Als Nächstes kommen Maschinen, Basis-Bau und die Rakete.', done: () => false }
   ];
   function updateGoals() {
-    while (G.stage < GOALS.length - 1 && GOALS[G.stage].done()) { G.stage++; if (state === 'play') A.play('click'); }
+    if (!MP.guest) while (G.stage < GOALS.length - 1 && GOALS[G.stage].done()) { G.stage++; if (state === 'play') A.play('click'); }
+    G.stage = U.clamp(G.stage, 0, GOALS.length - 1);
     UI.goal(GOALS[G.stage].txt);
   }
 
@@ -744,7 +890,10 @@
         LC.Map.edges(dt, BG.pos.x, BG.pos.z, BG.heading, 2.35, BG.headR, BG.suck > 0.2);
         // Säcke im Vorbeifahren einladen
         const sk = SK.nearest(BG.pos.x, BG.pos.z, 2.4);
-        if (sk && sk.n + sk.g <= BG.room()) { BG.load.n += sk.n; BG.load.g += sk.g; SK.remove(sk); shadowFrames = 2; A.play('thump'); UI.toast('Sack eingeladen', '', 1.5); }
+        if (sk && sk.n + sk.g <= BG.room()) {
+          if (MP.guest) MP.sackTake(sk, true);
+          else { BG.load.n += sk.n; BG.load.g += sk.g; SK.remove(sk); MP.sackTaken(sk); shadowFrames = 2; A.play('thump'); UI.toast('Sack eingeladen', '', 1.5); }
+        }
         if (Math.abs(BG.speed) > 2.5 && Math.random() < dt * 14) {
           const sd = Math.random() < 0.5 ? 1 : -1, ch = Math.cos(BG.heading), sh = Math.sin(BG.heading);
           V.kickDust(BG.pos.x + ch * sd * 1.05 + sh * 1.2, BG.pos.y, BG.pos.z - sh * sd * 1.05 + ch * 1.2, 3, 0.8);
@@ -824,19 +973,20 @@
         else UI.prompt(null);
       }
       else if (nearPoint && nearPoint.id === 'shop') UI.prompt('<kbd>E</kbd>Werkstatt öffnen');
-      else if ((!nearPoint || nearPoint.id === 'tunnel') && atTunnel()) UI.prompt(G.up.tunnel ? '<kbd>E</kbd>Durch den Tunnel nach ' + (G.sec === 1 ? 'Sektor 2' : 'Sektor 1') + ' gehen' : 'Tunnel nach Sektor 2 – noch gesperrt (Werkstatt)');
+      else if ((!nearPoint || nearPoint.id === 'tunnel') && atTunnel()) UI.prompt(MP.guest ? 'Tunnel – der Gastgeber fährt durch, alle kommen mit' : G.up.tunnel ? '<kbd>E</kbd>Durch den Tunnel nach ' + (G.sec === 1 ? 'Sektor 2' : 'Sektor 1') + ' gehen' : 'Tunnel nach Sektor 2 – noch gesperrt (Werkstatt)');
       else if (nearPoint && nearPoint.id !== 'tunnel') UI.prompt(tankTotal() + G.carry.length >= 0.05 ? '<kbd>E</kbd>Staub ' + (nearPoint.id === 'post' ? 'am Außenposten abgeben' : 'ins Staublager geben') + '<em>+ ' + UI.n0(Math.round(tankWorth())) + ' ¢</em>' : (nearPoint.id === 'post' ? 'Außenposten' : 'Staublager') + ' – du hast noch keinen Staub dabei');
-      else if (nearBuggy) UI.prompt('<kbd>E</kbd>In den Buggy steigen');
+      else if (nearBuggy) UI.prompt(MP.active && MP.drv && MP.drv !== MP.id ? 'Buggy – gerade besetzt' : '<kbd>E</kbd>In den Buggy steigen');
       else if (nearSack) UI.prompt('<kbd>E</kbd>Sack aufheben<em>' + UI.n0(nearSack.n + nearSack.g) + ' kg</em>');
       else UI.prompt(null);
 
       // Sektor fertig?
       const pc = D.percentClean(), dk = G.sec === 1 ? 'sectorDone' : 'sector2Done', bk = G.sec === 1 ? 'bonusPaid' : 'bonus2Paid', bonus = G.sec === 1 ? 2500 : 8000;
-      if (!G.stats[dk] && pc >= DONE_AT) {
+      if (!MP.guest && !G.stats[dk] && pc >= DONE_AT) {
         G.stats[dk] = true;
         A.play('goal'); UI.toast(W.cfg.name.toUpperCase() + ' IST BLITZBLANK!', 'big', 6);
-        if (!G.stats[bk]) { G.stats[bk] = true; G.money += bonus; G.stats.earned += bonus; UI.toast('Sektor-Bonus: + ' + UI.n0(bonus) + ' ¢', 'gold', 6); }
-        save();
+        const pay = !G.stats[bk];
+        if (pay) { G.stats[bk] = true; G.money += bonus; G.stats.earned += bonus; UI.toast('Sektor-Bonus: + ' + UI.n0(bonus) + ' ¢', 'gold', 6); }
+        save(); MP.pushWorld(); MP.event({ k: 'done', bonus: pay ? bonus : 0 });
       }
       W.terrainUniforms.uHint.value = (!G.stats[dk] && pc > 0.9) ? U.smoothstep(0.9, 0.95, pc) * 0.9 : 0;
       if (pc > 0.9 && !G.stats[dk] && !hintShown[G.sec]) { hintShown[G.sec] = true; UI.toast('Staub-Scanner an: Die letzten Reste leuchten orange.', '', 6); }
@@ -880,7 +1030,9 @@
       else if (state === 'cut') CS.update(dt, camera.aspect);
       V.idle(dt); A.setBuggy(false, 0);
       UI.prompt(null); UI.warn(null);
+      if (MP.active) { SK.update(dt); BG.update(dt, time, 1 - sunlit, null); if (travelFade > 0 && state !== 'cut') { travelFade -= dt; $('black').style.opacity = U.clamp(travelFade / 0.8, 0, 1); } }
     }
+    MP.update(dt, time);
 
     // Geld-Anzeige zählt hoch
     if (G.shown !== G.money) {
@@ -908,7 +1060,7 @@
     tp: (x, z, yaw, pitch) => { PL.reset(x, z, yaw || 0); if (pitch != null) PL.pitch = pitch; },
     fire: v => { fire = v; }, money: v => { G.money += v; }, interact, buy,
     sim: (sec, fn) => { const n = Math.round(sec * 60); for (let i = 0; i < n; i++) { if (fn) fn(i / 60); update(1 / 60); } },
-    PL, G, V, D, SK, BG, CS, GL, travel, enterSector, setTool, sackKey, applyState, openMap, openGlobe, closeMap, startEmote, startPlay,
+    PL, G, V, D, SK, BG, CS, GL, MP, W, travel, enterSector, setTool, sackKey, applyState, openMap, openGlobe, closeMap, startEmote, startPlay,
     info: () => ({ state, pc: D.percentClean(), tank: tankTotal(), money: G.money, pos: PL.pos.toArray(), post: P.enabled, target: V.target })
   };
 

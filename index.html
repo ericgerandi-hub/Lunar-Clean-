@@ -142,6 +142,24 @@
   button:disabled { opacity: .45; cursor: default; }
   #menu .how { margin-top: 0; display: grid; grid-template-columns: auto auto; gap: 5px 22px; font-size: 14px; color: var(--mut); }
   #menu .how b { color: var(--txt); font-weight: 600; }
+  #mp-hud { position: absolute; right: 22px; top: 230px; width: 176px; font-size: 13px; color: var(--txt); display: flex; flex-direction: column; gap: 3px; z-index: 3; background: var(--panel); border: 1px solid var(--line); padding: 7px 10px 8px; box-sizing: border-box; }
+  #mp-hud .c { font-size: 11px; letter-spacing: .14em; color: var(--mut); text-align: center; margin-bottom: 2px; }
+  #mp-hud .c b { color: var(--cy); font-size: 13px; letter-spacing: .2em; }
+  #mp-hud i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .7); }
+  #mp { background: rgba(0, 4, 8, .62); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); z-index: 30; }
+  #mp .box { width: min(640px, 94vw); max-height: 94vh; overflow: auto; box-sizing: border-box; }
+  #mp input { font: inherit; color: var(--txt); background: #0a1820; border: 1px solid var(--line); padding: 8px 10px; font-size: 16px; width: 210px; }
+  #mp-code { text-transform: uppercase; letter-spacing: .3em; text-align: center; width: 130px !important; font-size: 20px !important; }
+  #mp-a { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0 6px; }
+  #mp-a > div { border: 1px solid rgba(255, 255, 255, .09); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+  #mp-a h3 { margin: 0; font-size: 17px; letter-spacing: .1em; }
+  #mp-a p { margin: 0; font-size: 13.5px; color: var(--mut); line-height: 1.45; flex: 1; }
+  #mp-b { margin: 16px 0 6px; text-align: center; }
+  #mp-b .big { font-size: 58px; letter-spacing: .28em; color: var(--cy); font-weight: 700; margin: 4px 0 2px; padding-left: .28em; }
+  #mp-b p { color: var(--mut); font-size: 14px; margin: 6px 0 14px; line-height: 1.5; }
+  #mp-list { color: var(--txt); font-size: 15px; margin-bottom: 14px; min-height: 20px; }
+  #mp-msg { min-height: 20px; font-size: 14px; color: var(--am); margin: 10px 0 12px; }
+  @media (max-width: 620px) { #mp-a { grid-template-columns: 1fr; } }
   #ver { position: fixed; right: 14px; bottom: 10px; font-size: 12px; color: rgba(255, 255, 255, .4); }
 
   #pause, #shop { background: rgba(0, 4, 8, .62); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); }
@@ -200,6 +218,7 @@
   </div>
   <canvas id="mini"></canvas>
   <div id="mini-l"><b>M</b> KARTE</div>
+  <div id="mp-hud" class="hidden"></div>
   <div id="keys" class="panel">
     <b>W A S D</b>Laufen<br><b>Maus</b>Umsehen<br><b>Linke Maustaste</b>Putzen<br><b>1 – 4 / Mausrad</b>Werkzeug<br><b>G</b>Sack füllen und werfen<br><b>Leertaste</b>Springen (Jetpack: hoch)<br><b>Shift</b>Sprint an/aus<br><b>C</b>Hocke an/aus (Jetpack: runter)<br><b>X</b>Emotes<br><b>E</b>Benutzen<br><b>F</b>Helmlampe<br><b>M</b>Karte / ganzer Mond<br><b>Esc</b>Pause
   </div>
@@ -243,6 +262,7 @@
   <div class="btns" style="margin-bottom:26px">
     <button id="btn-play" class="pri">Spielen</button>
     <button id="btn-new" class="hidden">Neues Spiel</button>
+    <button id="btn-mp">Mehrspieler</button>
     <button id="btn-full">Vollbild: An</button>
   </div>
   <p id="touch" class="tag hidden" style="color:var(--am);margin:-10px 0 22px">Hinweis: Lunar Clean braucht im Moment Maus und Tastatur. Am Handy geht es noch nicht.</p>
@@ -257,17 +277,38 @@
 </div>
 <div id="ver"></div>
 
+<div id="mp" class="overlay hidden">
+  <div class="box panel">
+    <h2>MEHRSPIELER</h2>
+    <div class="sub" style="margin-bottom:12px">Putzt zu zweit, zu dritt oder zu viert. Einer eröffnet das Spiel, die anderen treten mit dem Code bei. Geld und Upgrades gehören allen zusammen.</div>
+    <div class="row" id="mp-namerow"><span>Dein Name</span><input id="mp-name" maxlength="14" placeholder="Astronaut" autocomplete="off" spellcheck="false"></div>
+    <div id="mp-a">
+      <div><h3>SPIEL ERÖFFNEN</h3><p>Dein Spielstand wird zur gemeinsamen Welt. Du bekommst einen Code für deine Freunde.</p><button id="mp-host" class="pri">Spiel eröffnen</button></div>
+      <div><h3>BEITRETEN</h3><p>Gib den Code ein, den dein Freund dir nennt. Dein eigener Spielstand bleibt unberührt.</p><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input id="mp-code" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false"><button id="mp-join">Beitreten</button></div></div>
+    </div>
+    <div id="mp-b" class="hidden">
+      <div id="mp-bt" style="font-size:12px;letter-spacing:.16em;color:var(--mut)">DEIN CODE</div>
+      <div class="big" id="mp-big">––––</div>
+      <p id="mp-bp"></p>
+      <div id="mp-list"></div>
+      <button id="mp-go" class="pri">Los geht's</button>
+    </div>
+    <div id="mp-msg"></div>
+    <div class="btns"><button id="mp-back" class="small">Zurück</button></div>
+  </div>
+</div>
+
 <div id="pause" class="overlay hidden">
   <div class="box panel">
     <h2>PAUSE</h2>
-    <div class="sub">Dein Fortschritt wird automatisch gespeichert.</div>
+    <div class="sub" id="pause-sub">Dein Fortschritt wird automatisch gespeichert.</div>
     <div class="stats" id="stats"></div>
     <div class="row"><span>Mausempfindlichkeit</span><input id="set-sens" type="range" min="0.3" max="2.5" step="0.05"></div>
     <div class="row"><span>Lautstärke</span><input id="set-vol" type="range" min="0" max="1" step="0.02"></div>
     <div class="row"><span>Musik</span><input id="set-music" type="checkbox"></div>
     <div class="row"><span>Vollbild (ohne Browser-Leisten)</span><input id="set-full" type="checkbox"></div>
     <div class="row"><span>Grafik</span><select id="set-gfx"><option value="niedrig">Niedrig (schneller)</option><option value="mittel">Mittel</option><option value="hoch">Hoch (schärfer)</option></select></div>
-    <div class="row" style="border-bottom:1px solid rgba(255,255,255,.07);margin-bottom:20px"><span>Spielstand</span><button id="btn-wipe" class="small danger">Löschen und neu anfangen</button></div>
+    <div class="row" id="row-wipe" style="border-bottom:1px solid rgba(255,255,255,.07);margin-bottom:20px"><span>Spielstand</span><button id="btn-wipe" class="small danger">Löschen und neu anfangen</button></div>
     <div class="btns"><button id="btn-resume" class="pri">Weiterspielen</button><button id="btn-tomenu">Hauptmenü</button></div>
   </div>
 </div>
@@ -288,21 +329,23 @@
 <div id="loading"><b>LUNAR CLEAN</b><span>MONDOBERFLÄCHE WIRD VERSTAUBT …</span></div>
 
 <script src="lib/three.min.js"></script>
-<script src="js/lc-util.js?v=0.5.0"></script>
-<script src="js/lc-world.js?v=0.5.0"></script>
-<script src="js/lc-dust.js?v=0.5.0"></script>
-<script src="js/lc-base.js?v=0.5.0"></script>
-<script src="js/lc-audio.js?v=0.5.0"></script>
-<script src="js/lc-player.js?v=0.5.0"></script>
-<script src="js/lc-vacuum.js?v=0.5.0"></script>
-<script src="js/lc-post.js?v=0.5.0"></script>
-<script src="js/lc-sacks.js?v=0.5.0"></script>
-<script src="js/lc-buggy.js?v=0.5.0"></script>
-<script src="js/lc-map.js?v=0.5.0"></script>
-<script src="js/lc-avatar.js?v=0.5.0"></script>
-<script src="js/lc-globe.js?v=0.5.0"></script>
-<script src="js/lc-cutscene.js?v=0.5.0"></script>
-<script src="js/lc-ui.js?v=0.5.0"></script>
-<script src="js/lc-main.js?v=0.5.0"></script>
+<script src="js/lc-util.js?v=0.6.0"></script>
+<script src="js/lc-world.js?v=0.6.0"></script>
+<script src="js/lc-dust.js?v=0.6.0"></script>
+<script src="js/lc-base.js?v=0.6.0"></script>
+<script src="js/lc-audio.js?v=0.6.0"></script>
+<script src="js/lc-player.js?v=0.6.0"></script>
+<script src="js/lc-vacuum.js?v=0.6.0"></script>
+<script src="js/lc-post.js?v=0.6.0"></script>
+<script src="js/lc-sacks.js?v=0.6.0"></script>
+<script src="js/lc-buggy.js?v=0.6.0"></script>
+<script src="js/lc-map.js?v=0.6.0"></script>
+<script src="js/lc-avatar.js?v=0.6.0"></script>
+<script src="js/lc-globe.js?v=0.6.0"></script>
+<script src="js/lc-cutscene.js?v=0.6.0"></script>
+<script src="js/lc-ui.js?v=0.6.0"></script>
+<script src="js/lc-net.js?v=0.6.0"></script>
+<script src="js/lc-mp.js?v=0.6.0"></script>
+<script src="js/lc-main.js?v=0.6.0"></script>
 </body>
 </html>
