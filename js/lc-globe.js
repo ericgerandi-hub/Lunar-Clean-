@@ -8,7 +8,11 @@
   const GL = { ready: false, yaw: 0, pitch: 0.25, dist: 3.4 };
   const LAT = 0.33, LON = -0.5;         // wo Sektor 1 auf dem Mond liegt
   let scene, cam, moon, marker, ring, grid, ship, shipGlow, earth, tmp = new THREE.Vector3();
-  GL.markerDir = new THREE.Vector3(Math.cos(LAT) * Math.sin(LON), Math.sin(LAT), Math.cos(LAT) * Math.cos(LON));
+  const dirOf = (la, lo) => new THREE.Vector3(Math.cos(la) * Math.sin(lo), Math.sin(la), Math.cos(la) * Math.cos(lo));
+  GL.markerDir = dirOf(LAT, LON);
+  GL.dirs = { 1: GL.markerDir, 2: dirOf(LAT + 0.075, LON + 0.115) };   // Sektor 2 liegt gleich nebenan (hinter dem Tunnel im Nordosten)
+  GL.cur = 1;
+  let marker2, spot2;
 
   function moonTexture() {
     const Wd = 1024, Hd = 512, c = document.createElement('canvas'); c.width = Wd; c.height = Hd;
@@ -62,6 +66,10 @@
     GL.spot = spot;
     ring = new THREE.Mesh(new THREE.RingGeometry(0.03, 0.036, 48), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.9, 2.2, 2.6), transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false }));
     marker.add(ring); scene.add(marker);
+    // Sektor 2: rostroter Fleck, erst sichtbar, wenn der Tunnel offen ist
+    marker2 = new THREE.Group(); marker2.position.copy(GL.dirs[2]).multiplyScalar(1.004); marker2.lookAt(GL.dirs[2].clone().multiplyScalar(3));
+    spot2 = new THREE.Mesh(new THREE.CircleGeometry(0.017, 24), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 1.0, 0.5) })); marker2.add(spot2);
+    marker2.visible = false; scene.add(marker2);
     // Sterne
     const rnd = U.rng(909), sp = new Float32Array(2400 * 3);
     for (let i = 0; i < 2400; i++) { const u = rnd() * 2 - 1, a = rnd() * 6.283, s = Math.sqrt(1 - u * u); sp[i * 3] = s * Math.cos(a) * 150; sp[i * 3 + 1] = u * 150; sp[i * 3 + 2] = s * Math.sin(a) * 150; }
@@ -84,8 +92,12 @@
     GL.scene = scene; GL.camera = cam;
   };
 
-  GL.open = function () {
+  // sec = Sektor, in dem man gerade steht; has2 = Tunnel offen
+  GL.open = function (sec, has2) {
     GL.build();
+    GL.cur = sec === 2 ? 2 : 1;
+    marker2.visible = !!has2 || GL.cur === 2;
+    (GL.cur === 2 ? marker2 : marker).add(ring);
     GL.yaw = LON + 0.35; GL.pitch = LAT + 0.1; GL.dist = 3.4; ship.visible = false;
   };
   GL.drag = function (dx, dy) { GL.yaw -= dx * 0.006; GL.pitch = U.clamp(GL.pitch + dy * 0.006, -1.45, 1.45); };
@@ -98,9 +110,10 @@
     cam.position.set(Math.sin(GL.yaw) * cp * GL.dist, Math.sin(GL.pitch) * GL.dist, Math.cos(GL.yaw) * cp * GL.dist);
     cam.lookAt(0, 0, 0); cam.updateMatrixWorld();
     const p = 1 + (t * 0.9 % 1) * 1.6; ring.scale.setScalar(p); ring.material.opacity = 0.95 * (1 - (t * 0.9 % 1));
-    const facing = tmp.copy(cam.position).normalize().dot(GL.markerDir);
+    const dir = GL.dirs[GL.cur];
+    const facing = tmp.copy(cam.position).normalize().dot(dir);
     if (facing < 0.12) return null;
-    tmp.copy(GL.markerDir).project(cam);
+    tmp.copy(dir).project(cam);
     out.x = tmp.x; out.y = tmp.y;
     return out;
   };
@@ -118,7 +131,7 @@
     ship.rotateZ(Math.sin(t * 1.3) * 0.08);
     ship.scale.setScalar(0.62 - u * 0.42);
     shipGlow.scale.set(1 + Math.random() * 0.25, 1 + Math.random() * 0.25, 2 + Math.random() * 0.8);
-    ring.scale.setScalar(1); ring.material.opacity = 0;
+    ring.scale.setScalar(1); ring.material.opacity = 0; marker2.visible = false;
   };
 
   LC.Globe = GL;

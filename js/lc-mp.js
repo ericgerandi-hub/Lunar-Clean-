@@ -146,7 +146,8 @@
   function pushWorld(to) {
     if (!MP.host) return;
     const e = eco(), b = bgState();
-    (to ? [to] : N.guests()).forEach(id => N.toGuest(id, { t: 'w', ack: lastAck[id] || 0, e, b }));
+    const r = LC.Robots.net();
+    (to ? [to] : N.guests()).forEach(id => N.toGuest(id, { t: 'w', ack: lastAck[id] || 0, e, b, r }));
   }
   MP.pushWorld = pushWorld;
   MP.resync = () => { if (MP.host) sendSnap('sync'); };
@@ -283,6 +284,7 @@
     pend.forEach(d => { pm += d.m; pn += d.ln; pg += d.lg; });
     G.money = Math.max(0, m.e.money + pm); prev.m = G.money;
     ctx.applyEco(m.e);
+    if (Array.isArray(m.r)) LC.Robots.netApply(m.r);
     const b = m.b; MP.drv = b[6] || null;
     const secCh = BG.sec !== b[5]; BG.sec = b[5];
     BG.load.n = Math.max(0, b[3] + pn); BG.load.g = Math.max(0, b[4] + pg); prev.ln = BG.load.n; prev.lg = BG.load.g;

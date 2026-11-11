@@ -133,6 +133,27 @@
     return out;
   };
 
+  // nächste staubige Stelle zu (px, pz); avoid = [{x, z, r}] wird ausgelassen (für die Putzroboter)
+  const near = { x: 0, z: 0 };
+  D.nearest = function (px, pz, avoid, ax, az, aw) {
+    aw = aw || 0;
+    const d = D.data, R2 = CLEAN_R * CLEAN_R, na = avoid ? avoid.length : 0; let best = 1e18, bx = 0, bz = 0;
+    for (let j = 0; j < N; j++) {
+      const z = (j + 0.5) * CELL - SIZE / 2, dz2 = (z - pz) * (z - pz) + aw * (z - az) * (z - az); if (dz2 >= best) continue;
+      const row = j * N;
+      for (let i = 0; i < N; i++) {
+        if (!d[row + i]) continue;
+        const x = (i + 0.5) * CELL - SIZE / 2, q = (x - px) * (x - px) + aw * (x - ax) * (x - ax) + dz2;
+        if (q >= best || x * x + z * z >= R2) continue;
+        let ok = true;
+        for (let a = 0; a < na; a++) { const v = avoid[a], ex = x - v.x, ez = z - v.z; if (ex * ex + ez * ez < v.r * v.r) { ok = false; break; } }
+        if (ok) { best = q; bx = x; bz = z; }
+      }
+    }
+    if (best > 1e17) return null;
+    near.x = bx; near.z = bz; return near;
+  };
+
   D.percentClean = function () { return D.total ? U.clamp(1 - D.current / D.total, 0, 1) : 0; };
 
   D.amountAt = function (x, z) {

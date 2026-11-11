@@ -127,6 +127,14 @@
       if (BGm.here()) dot(BGm.pos.x, BGm.pos.z, '#59f08f', labels ? 6 : 4.5, 'Buggy', 'sq');
     }
     if (SKm) SKm.list.forEach(k => dot(k.x, k.z, '#d8b98a', labels ? 3.5 : 2.6));
+    if (LC.Robots) LC.Robots.list.forEach(r => {
+      if (r.packed || r.sec !== W.sec) return;
+      ctx.save(); ctx.translate(r.x * s, r.z * s); ctx.rotate(-r.h);
+      const q = labels ? 7 : 5;
+      ctx.fillStyle = r.state === 'home' || r.state === 'unload' ? '#ffb040' : '#59f08f'; ctx.strokeStyle = 'rgba(0,0,0,.8)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(0, -q); ctx.lineTo(q * 0.8, q * 0.7); ctx.lineTo(-q * 0.8, q * 0.7); ctx.closePath(); ctx.stroke(); ctx.fill();
+      ctx.restore();
+    });
     (M.rests || []).forEach(r => {
       ctx.save(); ctx.translate(r.x * s, r.z * s);
       const k = 0.5 + 0.5 * Math.sin(performance.now() / 180), rr = labels ? 9 : 6;
