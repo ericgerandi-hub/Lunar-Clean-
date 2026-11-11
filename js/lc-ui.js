@@ -8,7 +8,7 @@
   const el = {};
   ['hud', 'money', 'money-v', 'goal', 'goal-t', 'sec-v', 'sec-b', 'hud-bl', 'tank-v', 'tank-n', 'tank-g', 'tank-s', 'tank-m', 'jet', 'jet-b', 'jet-v',
     'cross', 'prompt', 'warn', 'toasts', 'way', 'way-d', 'keys', 'fps', 'menu', 'pause', 'shop', 'cards', 'shop-money', 'stats', 'loading', 'ver',
-    'btn-play', 'btn-new', 'btn-resume', 'btn-tomenu', 'btn-wipe', 'btn-shopclose', 'set-sens', 'set-vol', 'set-music', 'set-gfx'].forEach(id => el[id] = $(id));
+    'btn-play', 'btn-new', 'btn-resume', 'btn-tomenu', 'btn-wipe', 'btn-shopclose', 'btn-full', 'set-full', 'set-sens', 'set-vol', 'set-music', 'set-gfx'].forEach(id => el[id] = $(id));
   UI.el = el;
 
   const nf0 = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 });

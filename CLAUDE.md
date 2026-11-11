@@ -15,6 +15,7 @@ Spielplan (alle Entscheidungen des Nutzers): https://claude.ai/artifact/FeVhH9CZ
   - `lc-vacuum.js` Sauger-Modell in der Hand (eigene Szene), Saugen, Partikel, Zielring
   - `lc-post.js` HDR, Bloom, Filmkurve (fällt ohne Float-Texturen auf direktes Zeichnen zurück)
   - `lc-audio.js` alle Töne und Musik live erzeugt (keine Audiodateien)
+  - `lc-map.js` Minimap (dreht mit) und große Karte (Taste M), gezeichnet aus der Staubkarte
   - `lc-ui.js` HUD, Werkstatt-Fenster
   - `lc-main.js` Spielstand, Upgrades (`UP`), Preise, Ziele (`GOALS`), Hauptschleife, Speichern
 

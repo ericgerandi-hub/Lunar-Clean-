@@ -4,7 +4,7 @@
    ========================================================= */
 (function (LC) {
   const U = LC.U, W = LC.World, D = LC.Dust, B = LC.Base, PL = LC.Player, V = LC.Vacuum, P = LC.Post, A = LC.Audio, UI = LC.UI;
-  const VERSION = '0.1.0';                 // nach jeder Änderung hochzählen
+  const VERSION = '0.2.0';                 // nach jeder Änderung hochzählen
   const SAVE_KEY = 'lunarclean_save_v1', SET_KEY = 'lunarclean_settings_v1';
   const PRICE_N = 2, PRICE_G = 15;         // ¢ pro kg: normaler Staub / Glitzerstaub
   const TEST = /[?&]test/.test(location.search);
@@ -35,7 +35,7 @@
     G.stats = { kg: 0, earned: 0, time: 0, sold: 0, sectorDone: false };
     G.stage = 0;
   }
-  const S = { sens: 1, vol: 0.7, music: true, gfx: 'mittel' };
+  const S = { sens: 1, vol: 0.7, music: true, gfx: 'mittel', full: true };
   const val = id => UP[id].vals[G.up[id]];
   const cap = () => val('tank');
   const tankTotal = () => G.tank.n + G.tank.g;
@@ -143,6 +143,7 @@
     A.vol = S.vol; A.music = S.music; PL.sens = S.sens;
 
     bindInput();
+    LC.Map.init();
     bindUI();
     UI.el.ver.textContent = 'Version ' + VERSION;
     try { if (window.matchMedia('(pointer: coarse)').matches && !window.matchMedia('(any-pointer: fine)').matches) document.getElementById('touch').classList.remove('hidden'); } catch (e) {}
@@ -173,6 +174,7 @@
     if (s === 'pause') renderStats();
     if (s === 'shop') renderShop();
     if (s === 'play') { keysT = keysT || time + 14; }
+    if (s !== 'play' && LC.Map.open) LC.Map.setOpen(false);
     document.body.style.cursor = s === 'play' ? 'none' : 'default';
   }
   function lock() {
@@ -180,7 +182,19 @@
     const c = renderer.domElement;
     try { const p = c.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
   }
-  function startPlay() { A.init(); A.setVolume(S.vol); A.setMusic(S.music); lock(); }
+  // Vollbild: blendet Adressleiste und Tabs aus
+  function goFull() {
+    if (TEST || !S.full || document.fullscreenElement) return;
+    const el = document.documentElement, fn = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (!fn) return;
+    try { const p = fn.call(el); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+  }
+  function setFull(on) {
+    S.full = on; saveSettings();
+    UI.el['btn-full'].textContent = 'Vollbild: ' + (on ? 'An' : 'Aus'); UI.el['set-full'].checked = on;
+    if (!on && document.fullscreenElement) { try { document.exitFullscreen(); } catch (e) {} }
+  }
+  function startPlay() { A.init(); A.setVolume(S.vol); A.setMusic(S.music); goFull(); lock(); }
 
   function bindInput() {
     document.addEventListener('pointerlockchange', () => {
@@ -202,7 +216,7 @@
         PL.keys[e.code] = true;
         if (e.code === 'KeyE' && !e.repeat) interact();
         if (e.code === 'KeyF' && !e.repeat) { lampOn = !lampOn; A.play('click'); }
-        if (e.code === 'KeyM' && !e.repeat) { S.music = !S.music; A.setMusic(S.music); saveSettings(); UI.toast(S.music ? 'Musik an' : 'Musik aus'); }
+        if (e.code === 'KeyM' && !e.repeat) { LC.Map.setOpen(!LC.Map.open); A.play('click'); }
         if (TEST && e.code === 'Escape') setState('pause');
         if (['Space', 'ArrowUp', 'ArrowDown', 'Tab'].indexOf(e.code) >= 0) e.preventDefault();
       } else if (state === 'shop') {
@@ -229,6 +243,9 @@
     e['set-sens'].value = S.sens; e['set-vol'].value = S.vol; e['set-music'].checked = S.music; e['set-gfx'].value = S.gfx;
     e['set-sens'].addEventListener('input', () => { S.sens = +e['set-sens'].value; PL.sens = S.sens; saveSettings(); });
     e['set-vol'].addEventListener('input', () => { S.vol = +e['set-vol'].value; A.setVolume(S.vol); saveSettings(); });
+    setFull(S.full !== false);
+    e['btn-full'].addEventListener('click', () => { setFull(!S.full); if (S.full) goFull(); });
+    e['set-full'].addEventListener('change', () => { setFull(e['set-full'].checked); if (S.full) goFull(); });
     e['set-music'].addEventListener('change', () => { S.music = e['set-music'].checked; A.setMusic(S.music); saveSettings(); });
     e['set-gfx'].addEventListener('change', () => {
       S.gfx = e['set-gfx'].value; saveSettings(); perfDone = true;
@@ -444,6 +461,8 @@
         sx /= m; sy /= m;
         UI.way(true, (sx * 0.5 + 0.5) * window.innerWidth, (-sy * 0.5 + 0.5) * window.innerHeight, bd);
       } else UI.way(false);
+      LC.Map.update(dt, PL.pos.x, PL.pos.z, PL.yaw);
+      if (LC.Map.open) document.getElementById('map-pc').textContent = UI.n1(D.percentClean() * 100) + ' % sauber';
 
       if (keysT && time > keysT) { UI.el.keys.classList.add('fade'); keysT = 0; }
       saveT += dt; if (saveT > 20) { saveT = 0; save(); }
