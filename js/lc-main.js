@@ -3,8 +3,8 @@
    Lunar Clean – Hauptprogramm: Spielstand, Regeln, Schleife
    ========================================================= */
 (function (LC) {
-  const U = LC.U, W = LC.World, D = LC.Dust, B = LC.Base, PL = LC.Player, V = LC.Vacuum, P = LC.Post, A = LC.Audio, UI = LC.UI, SK = LC.Sacks, BG = LC.Buggy;
-  const VERSION = '0.3.0';                 // nach jeder Änderung hochzählen
+  const U = LC.U, W = LC.World, D = LC.Dust, B = LC.Base, PL = LC.Player, V = LC.Vacuum, P = LC.Post, A = LC.Audio, UI = LC.UI, SK = LC.Sacks, BG = LC.Buggy, AV = LC.Avatar, GL = LC.Globe, CS = LC.Cutscene;
+  const VERSION = '0.4.0';                 // nach jeder Änderung hochzählen
   const SAVE_KEY = 'lunarclean_save_v1', SET_KEY = 'lunarclean_settings_v1';
   const PRICE_N = 2, PRICE_G = 15;         // ¢ pro kg: normaler Staub / Glitzerstaub
   const TEST = /[?&]test/.test(location.search);
@@ -61,8 +61,9 @@
     G.up = {}; UP_ORDER.forEach(k => { G.up[k] = 0; });
     G.tank = { n: 0, g: 0 };
     G.carry = [];              // getragene Säcke: [{n, g}]
+    G.marks = [];              // Markierungen auf der Karte: [{x, z}]
     G.tool = 'spoon';
-    G.stats = { kg: 0, earned: 0, time: 0, sold: 0, sectorDone: false };
+    G.stats = { kg: 0, earned: 0, time: 0, sold: 0, sectorDone: false, intro: false, mapSeen: false, emoted: false };
     G.stage = 0;
   }
   const S = { sens: 1, vol: 0.7, music: true, gfx: 'mittel', full: true };
@@ -78,7 +79,7 @@
       let px = PL.pos.x, pz = PL.pos.z;
       if (BG.driving) { BG.exitPoint(tmpV); px = tmpV.x; pz = tmpV.z; }
       localStorage.setItem(SAVE_KEY, JSON.stringify({
-        v: 1, money: G.money, up: G.up, tank: G.tank, stats: G.stats, stage: G.stage, tool: G.tool, carry: G.carry,
+        v: 1, gv: 2, marks: G.marks, money: G.money, up: G.up, tank: G.tank, stats: G.stats, stage: G.stage, tool: G.tool, carry: G.carry,
         sacks: SK.serialize(), buggy: BG.owned ? BG.serialize() : null,
         pos: [px, pz, PL.yaw], dust: D.serialize()
       }));
@@ -96,6 +97,8 @@
       Object.keys(G.up).forEach(k => { G.up[k] = U.clamp(Math.floor(+(o.up || {})[k] || 0), 0, UP[k].max); });
       Object.assign(G.stats, o.stats || {}); G.stage = +o.stage || 0;
       if (old) { G.up.shovel = 1; G.up.vac = 1; G.stage = G.up.repair ? 6 : 5; }
+      if (o.gv !== 2) { G.stage += 2; G.stats.intro = true; G.stats.mapSeen = true; G.stats.emoted = true; }   // vor Version 0.4: zwei neue Ziele am Anfang
+      G.marks = (Array.isArray(o.marks) ? o.marks : []).slice(0, 10).map(m => ({ x: +m.x || 0, z: +m.z || 0 }));
       G.tank.n = Math.max(0, +(o.tank || {}).n || 0); G.tank.g = Math.max(0, +(o.tank || {}).g || 0);
       const over = tankTotal() / cap(); if (over > 1) { G.tank.n /= over; G.tank.g /= over; }
       G.carry = (Array.isArray(o.carry) ? o.carry : []).slice(0, SK.CARRY).map(c => ({ n: Math.max(0, +c.n || 0), g: Math.max(0, +c.g || 0) }));
@@ -117,6 +120,7 @@
     try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
   }
   function applyState() {
+    LC.Map.marks = G.marks;
     V.setRepaired(G.up.repair > 0);
     const t = TOOLS.filter(x => x.id === G.tool)[0];
     if (!t || !t.has()) G.tool = bestTool();
@@ -176,6 +180,7 @@
     if (S.gfx === 'niedrig') W.sun.shadow.mapSize.set(2048, 2048);
     B.build(scene);
     V.init(scene);
+    avatar = AV.build(); avatar.root.visible = false; scene.add(avatar.root);
     SK.init(scene, s => { shadowFrames = 2; A.play('thump'); V.kickDust(s.x, s.y, s.z, 12, 0.9); });
     BG.init(scene);
     const env = buildEnv();
@@ -219,20 +224,37 @@
   }
 
   // ---------- Zustände ----------
+  const $ = id => document.getElementById(id);
+  const showEl = (id, on) => $(id).classList.toggle('hidden', !on);
   function setState(s) {
     state = s;
     UI.show('menu', s === 'menu'); UI.show('ver', s === 'menu');
     UI.show('pause', s === 'pause'); UI.show('shop', s === 'shop');
-    UI.show('hud', s === 'play' || s === 'shop' || s === 'pause' || s === 'wait');
-    if (s !== 'play') { fire = false; PL.keys = {}; PL.mdx = PL.mdy = 0; A.setJet(0); }
+    UI.show('hud', s === 'play' || s === 'shop' || s === 'pause' || s === 'wait' || s === 'map');
+    showEl('globe-ui', s === 'globe'); showEl('cine', s === 'cut');
+    if (s !== 'play') { fire = false; PL.keys = {}; PL.mdx = PL.mdy = 0; A.setJet(0); endEmote(); setEmoteMenu(false); }
+    if (s !== 'cut') { $('black').style.opacity = 0; $('flash').style.opacity = 0; }
+    showEl('keys', s !== 'map');
     if (s === 'pause') renderStats();
     if (s === 'shop') renderShop();
-    if (s === 'play') { keysT = keysT || time + 14; }
-    if (s !== 'play' && LC.Map.open) LC.Map.setOpen(false);
-    document.body.style.cursor = s === 'play' ? 'none' : 'default';
+    if (s === 'play') { keysT = keysT || time + 16; }
+    if (s !== 'map' && LC.Map.open) LC.Map.setOpen(false);
+    document.body.style.cursor = s === 'play' || s === 'cut' ? 'none' : 'default';
+  }
+  // nach dem Klick auf „Spielen“: erst das Intro (bei neuem Spiel), dann los
+  let pendingIntro = false;
+  const cctx = {
+    sub: (txt, cls) => { const e = $('cine-sub'); e.textContent = txt; e.className = cls || ''; },
+    fade: v => { $('black').style.opacity = 1 - U.clamp(v, 0, 1); },
+    flash: v => { $('flash').style.opacity = U.clamp(v, 0, 1); },
+    done: () => { G.stats.intro = true; if (state === 'cut') { setState('play'); UI.toast('Ziel: Verdiene dir die Rakete nach Hause.', 'big', 5); } }
+  };
+  function enterGame() {
+    if (pendingIntro) { pendingIntro = false; cctx.scene = scene; cctx.camera = camera; setState('cut'); CS.start(cctx); }
+    else setState('play');
   }
   function lock() {
-    if (TEST) { setState('play'); return; }
+    if (TEST) { enterGame(); return; }
     const c = renderer.domElement;
     try { const p = c.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
   }
@@ -248,36 +270,100 @@
     UI.el['btn-full'].textContent = 'Vollbild: ' + (on ? 'An' : 'Aus'); UI.el['set-full'].checked = on;
     if (!on && document.fullscreenElement) { try { document.exitFullscreen(); } catch (e) {} }
   }
-  function startPlay() { A.init(); A.setVolume(S.vol); A.setMusic(S.music); goFull(); lock(); }
+  function startPlay(intro) {
+    pendingIntro = !!intro && (!TEST || /[?&]intro/.test(location.search));
+    A.init(); A.setVolume(S.vol); A.setMusic(S.music); goFull(); lock();
+  }
+
+  // ---------- Karte (M) und Mond-Ansicht (noch mal M) ----------
+  function openMap() {
+    if (emote || selling) return;
+    setState('map'); LC.Map.setOpen(true); A.play('click');
+    if (!TEST && document.pointerLockElement) document.exitPointerLock();
+  }
+  function openGlobe() {
+    GL.open(); G.stats.mapSeen = true; setState('globe'); A.play('click');
+    const moonArea = 3.793e13, cleaned = D.percentClean() * Math.PI * 74 * 74;
+    $('globe-pc').textContent = (cleaned / moonArea * 100).toFixed(10).replace('.', ',') + ' %';
+    $('globe-sec').textContent = 'Sektor 1: ' + UI.n1(D.percentClean() * 100) + ' % sauber';
+  }
+  function closeMap() {
+    A.play('click');
+    if (TEST) { setState('play'); return; }
+    setState('wait'); goFull(); lock();
+    setTimeout(() => { if (state === 'wait') setState('pause'); }, 700);
+  }
+
+  // ---------- Emotes (X, dann Zahl) ----------
+  let emote = null, emoteMenu = false, emoteMenuT = 0, avatar = null;
+  function setEmoteMenu(on) {
+    emoteMenu = on; emoteMenuT = 6;
+    const e = $('emotes'); if (!e) return;
+    e.classList.toggle('hidden', !on);
+    if (on && !e.firstChild) AV.EMOTES.forEach((m, i) => { const d = document.createElement('span'); const k = document.createElement('kbd'); k.textContent = i + 1; d.appendChild(k); d.appendChild(document.createTextNode(m.name)); e.appendChild(d); });
+  }
+  function startEmote(i) {
+    const m = AV.EMOTES[i];
+    if (!m || BG.driving || !PL.onGround || selling) return;
+    emote = { id: m.id, t: 0, dur: m.dur }; setEmoteMenu(false);
+    G.stats.emoted = true; PL.vel.set(0, 0, 0); PL.sprint = false; PL.crouch = false; fire = false; A.play('click');
+  }
+  function endEmote() { emote = null; if (avatar) avatar.root.visible = false; }
 
   function bindInput() {
     document.addEventListener('pointerlockchange', () => {
       const locked = document.pointerLockElement === renderer.domElement;
-      if (locked) setState('play');
+      if (locked) enterGame();
       else if (state === 'play') { setState('pause'); save(); }
+      else if (state === 'cut') { setState('pause'); CS.skip(true); }
     });
     document.addEventListener('pointerlockerror', () => { if (state === 'wait') setState('pause'); });
     document.addEventListener('mousemove', e => {
+      if (state === 'globe') { if (e.buttons & 1) GL.drag(e.movementX || 0, e.movementY || 0); return; }
       if (state !== 'play') return;
       if (TEST && !(e.buttons & 2)) return;
       PL.mdx += e.movementX || 0; PL.mdy += e.movementY || 0;
     });
-    document.addEventListener('mousedown', e => { if (state === 'play' && e.button === 0) fire = true; });
+    document.addEventListener('mousedown', e => {
+      if (state === 'play' && e.button === 0) fire = true;
+      else if (state === 'cut') CS.skip();
+    });
     document.addEventListener('mouseup', e => { if (e.button === 0) fire = false; });
     document.addEventListener('contextmenu', e => e.preventDefault());
-    document.addEventListener('wheel', e => { if (state === 'play' && !BG.driving) cycleTool(e.deltaY > 0 ? 1 : -1); }, { passive: true });
+    document.addEventListener('wheel', e => {
+      if (state === 'play' && !BG.driving) cycleTool(e.deltaY > 0 ? 1 : -1);
+      else if (state === 'globe') GL.zoom(e.deltaY > 0 ? 1 : -1);
+    }, { passive: true });
+    // Musik schon im Menü: der Browser erlaubt Ton erst nach dem ersten Klick oder Tastendruck
+    const firstTouch = () => { A.init(); A.setVolume(S.vol); A.setMusic(S.music); document.removeEventListener('pointerdown', firstTouch); document.removeEventListener('keydown', firstTouch); };
+    document.addEventListener('pointerdown', firstTouch); document.addEventListener('keydown', firstTouch);
     document.addEventListener('keydown', e => {
       if (state === 'play') {
+        if (emoteMenu && /^Digit[1-6]$/.test(e.code)) { if (!e.repeat) startEmote(+e.code.slice(5) - 1); e.preventDefault(); return; }
         PL.keys[e.code] = true;
-        if (e.code === 'KeyE' && !e.repeat) interact();
-        if (e.code === 'KeyG' && !e.repeat) sackKey();
-        if (/^Digit[1-4]$/.test(e.code) && !e.repeat && !BG.driving) { const t = TOOLS[+e.code.slice(5) - 1]; if (t.has()) setTool(t.id); else { A.play('deny'); UI.toast(t.name + ' hast du noch nicht – gibt es in der Werkstatt.', '', 2.2); } }
-        if (e.code === 'KeyF' && !e.repeat) { lampOn = !lampOn; A.play('click'); }
-        if (e.code === 'KeyM' && !e.repeat) { LC.Map.setOpen(!LC.Map.open); A.play('click'); }
-        if (TEST && e.code === 'Escape') setState('pause');
         if (['Space', 'ArrowUp', 'ArrowDown', 'Tab'].indexOf(e.code) >= 0) e.preventDefault();
+        if (e.repeat) return;
+        if (emote && e.code !== 'KeyX') return;
+        switch (e.code) {
+          case 'KeyE': interact(); break;
+          case 'KeyG': sackKey(); break;
+          case 'KeyF': lampOn = !lampOn; A.play('click'); break;
+          case 'KeyM': openMap(); break;
+          case 'KeyX': if (emote) endEmote(); else if (!BG.driving) setEmoteMenu(!emoteMenu); break;
+          case 'ShiftLeft': case 'ShiftRight': if (!BG.driving) { PL.sprint = !PL.sprint; if (PL.sprint) PL.crouch = false; } break;
+          case 'KeyC': if (!BG.driving && PL.onGround) { PL.crouch = !PL.crouch; if (PL.crouch) PL.sprint = false; } break;
+          case 'Escape': if (TEST) setState('pause'); break;
+          default:
+            if (/^Digit[1-4]$/.test(e.code) && !BG.driving) { const t = TOOLS[+e.code.slice(5) - 1]; if (t.has()) setTool(t.id); else { A.play('deny'); UI.toast(t.name + ' hast du noch nicht – gibt es in der Werkstatt.', '', 2.2); } }
+        }
       } else if (state === 'shop') {
         if ((e.code === 'KeyE' || e.code === 'Escape') && !e.repeat) closeShop();
+      } else if (state === 'map') {
+        if (e.code === 'KeyM' && !e.repeat) openGlobe(); else if (e.code === 'Escape') closeMap();
+      } else if (state === 'globe') {
+        if ((e.code === 'KeyM' || e.code === 'Escape') && !e.repeat) closeMap();
+      } else if (state === 'cut') {
+        if (e.code === 'Space' || e.code === 'Enter') { CS.skip(); e.preventDefault(); }
       }
     });
     document.addEventListener('keyup', e => { PL.keys[e.code] = false; });
@@ -287,14 +373,14 @@
 
   function bindUI() {
     const e = UI.el;
-    e['btn-play'].addEventListener('click', () => startPlay());
-    e['btn-new'].addEventListener('click', () => { newGame(); startPlay(); });
+    e['btn-play'].addEventListener('click', () => startPlay(!G.stats.intro && G.stats.time < 1));
+    e['btn-new'].addEventListener('click', () => { newGame(); shadowFrames = 3; startPlay(true); });
     e['btn-resume'].addEventListener('click', () => startPlay());
     e['btn-tomenu'].addEventListener('click', () => { save(); UI.el['btn-play'].textContent = 'Weiterspielen'; UI.show('btn-new', true); setState('menu'); });
     e['btn-shopclose'].addEventListener('click', closeShop);
     let wipeArmed = 0;
     e['btn-wipe'].addEventListener('click', () => {
-      if (performance.now() - wipeArmed < 4000) { newGame(); e['btn-wipe'].textContent = 'Löschen und neu anfangen'; wipeArmed = 0; shadowFrames = 3; startPlay(); }
+      if (performance.now() - wipeArmed < 4000) { newGame(); e['btn-wipe'].textContent = 'Löschen und neu anfangen'; wipeArmed = 0; shadowFrames = 3; startPlay(true); }
       else { wipeArmed = performance.now(); e['btn-wipe'].textContent = 'Wirklich löschen? Nochmal klicken'; setTimeout(() => { e['btn-wipe'].textContent = 'Löschen und neu anfangen'; }, 4000); }
     });
     e['set-sens'].value = S.sens; e['set-vol'].value = S.vol; e['set-music'].checked = S.music; e['set-gfx'].value = S.gfx;
@@ -332,6 +418,7 @@
     G.money -= cost; G.shown = G.money; G.up[id] = lv + 1;
     A.play('buy');
     if (id === 'repair') V.setRepaired(true);
+    if (id === 'jet') UI.toast('Jetpack: Leertaste in der Luft halten = hoch, C halten = runter.', 'gold', 7);
     if (id === 'shovel' || id === 'vac' || id === 'xl') setTool(id, true);
     if (id === 'buggy') { BG.setOwned(true); BG.place(BG.park.x, BG.park.z, BG.park.heading); UI.toast('Dein Mondbuggy steht neben der Basis bereit!', 'gold', 5); }
     renderShop(); UI.money(G.money, true); save();
@@ -442,6 +529,8 @@
 
   // ---------- Ziele ----------
   const GOALS = [
+    { txt: 'Sieh dich um: M öffnet die Karte, noch mal M zeigt den ganzen Mond, noch mal M schließt sie.', done: () => G.stats.mapSeen },
+    { txt: 'Drück X und dann eine Zahl für ein Emote. Praktisch, wenn später Freunde mitspielen.', done: () => G.stats.emoted },
     { txt: 'Du hast nur einen Löffel. Halte die linke Maustaste gedrückt und kratz Staub vom Boden.', done: () => G.stats.kg >= 1.5 },
     { txt: 'Mach deinen Behälter voll (12 kg). Tipp: Mit G füllst du ihn in einen Sack um und wirfst ihn hin.', done: () => tankTotal() >= cap() - 0.01 || G.stats.sold > 0 || SK.list.length > 0 },
     { txt: 'Bring den Staub zum Staublager an der Basis und drücke E am gelben Trichter.', done: () => G.stats.sold > 0 },
@@ -455,6 +544,18 @@
   function updateGoals() {
     while (G.stage < GOALS.length - 1 && GOALS[G.stage].done()) { G.stage++; if (state === 'play') A.play('click'); }
     UI.goal(GOALS[G.stage].txt);
+  }
+
+  // Weltpunkt auf den Bildschirm rechnen (am Rand festgehalten). Ergebnis in scr
+  const scr = { x: 0, y: 0 };
+  let lastStance = '', lastDrive = null;
+  function toScreen(x, y, z) {
+    tmpV.set(x, y, z).project(camera);
+    let sx = tmpV.x, sy = tmpV.y;
+    if (tmpV.z > 1) { sx = -sx; sy = -1; }
+    const m = Math.max(Math.abs(sx) / 0.92, Math.abs(sy) / 0.86, 1);
+    scr.x = (sx / m * 0.5 + 0.5) * window.innerWidth; scr.y = (-sy / m * 0.5 + 0.5) * window.innerHeight;
+    return true;
   }
 
   // steht der Spieler in der Sonne? (für das Licht auf dem Sauger)
@@ -511,7 +612,8 @@
     if (dt > 0.05) dt = 0.05; if (dt <= 0) dt = 0.001;
     update(dt);
     if (shadowFrames > 0) { shadowFrames--; renderer.shadowMap.needsUpdate = true; }
-    P.render(renderer, scene, camera, state === 'menu' ? null : V.scene, V.camera, time);
+    if (state === 'globe' || (state === 'cut' && CS.view === 'globe')) P.render(renderer, GL.scene, GL.camera, null, null, time);
+    else P.render(renderer, scene, camera, state === 'menu' || state === 'cut' || emote ? null : V.scene, V.camera, time);
   }
 
   function update(dt) {
@@ -529,6 +631,7 @@
         BG.applyCamera(camera); camera.updateMatrixWorld();
         PL.pos.copy(BG.pos); PL.vel.set(0, 0, 0); PL.onGround = true; PL.jetting = false; PL.atLimit = BG.atLimit; PL.yaw = BG.heading;
         A.setJet(0); A.setBuggy(true, Math.abs(BG.speed));
+        LC.Map.edges(dt, BG.pos.x, BG.pos.z, BG.heading, 2.35, 2.2, BG.suck > 0.2);
         // Säcke im Vorbeifahren einladen
         const sk = SK.nearest(BG.pos.x, BG.pos.z, 2.4);
         if (sk && sk.n + sk.g <= BG.room()) { BG.load.n += sk.n; BG.load.g += sk.g; SK.remove(sk); shadowFrames = 2; A.play('thump'); UI.toast('Sack eingeladen', '', 1.5); }
@@ -537,13 +640,28 @@
           V.kickDust(BG.pos.x + ch * sd * 1.05 + sh * 1.2, BG.pos.y, BG.pos.z - sh * sd * 1.05 + ch * 1.2, 3, 0.8);
         }
       } else {
+        if (emote) {
+          emote.t += dt;
+          const k = PL.keys;
+          if (emote.t > 0.3 && (k.KeyW || k.KeyA || k.KeyS || k.KeyD || k.Space)) emote.t = emote.dur;
+          if (emote.t >= emote.dur) endEmote();
+        }
+        if (emoteMenu) { emoteMenuT -= dt; if (emoteMenuT <= 0) setEmoteMenu(false); }
         pcfg.jet = G.up.jet > 0; pcfg.fuelTime = val('fuel');
-        PL.update(dt, pcfg, evs);
+        if (emote) { PL.mdx = PL.mdy = 0; PL.lookDX = PL.lookDY = 0; } else PL.update(dt, pcfg, evs);
         if (BG.owned) {     // nicht durch den geparkten Buggy laufen
           const dx = PL.pos.x - BG.pos.x, dz = PL.pos.z - BG.pos.z, d2 = dx * dx + dz * dz, rr = 1.95;
           if (d2 < rr * rr && d2 > 1e-6 && PL.pos.y - BG.pos.y < 2.3) { const d = Math.sqrt(d2); PL.pos.x = BG.pos.x + dx / d * rr; PL.pos.z = BG.pos.z + dz / d * rr; }
         }
-        PL.applyCamera(camera); camera.updateMatrixWorld();
+        if (emote) {
+          // Kamera geht kurz nach außen, damit man die Figur sieht
+          avatar.root.visible = true; avatar.root.position.copy(PL.pos); avatar.root.rotation.y = PL.yaw;
+          AV.pose(avatar, emote.id, emote.t, emote.dur);
+          const a = PL.yaw + 0.45 + emote.t * 0.16, cx = PL.pos.x - Math.sin(a) * 3.6, cz = PL.pos.z - Math.cos(a) * 3.6;
+          camera.position.set(cx, Math.max(B.groundAt(cx, cz) + 0.5, PL.pos.y + 1.55), cz);
+          camera.rotation.set(0, 0, 0); camera.lookAt(PL.pos.x, PL.pos.y + 1.15, PL.pos.z);
+        } else PL.applyCamera(camera);
+        camera.updateMatrixWorld();
         A.setJet(PL.jetting ? 1 : 0);
         if (PL.jetting && Math.random() < dt * 40) V.spawn(PL.pos.x + (Math.random() - 0.5) * 0.3, PL.pos.y + 0.9, PL.pos.z + (Math.random() - 0.5) * 0.3,
           (Math.random() - 0.5) * 1.5, -3 - Math.random() * 2, (Math.random() - 0.5) * 1.5, 0, 0.5, 0.07, 2.2, 1.4, 0.6, 0.05);
@@ -568,10 +686,10 @@
         vcfg.kind = 'vac'; vcfg.radius = val('width') * (xl ? 1.6 : 1); vcfg.rate = (G.up.repair ? 4.2 : 2.6) * val('power') * (xl ? 1.7 : 1);
         vcfg.reach = 6.2 + G.up.power * 0.6 + (xl ? 1.2 : 0);
       }
-      vcfg.repaired = G.up.repair > 0; vcfg.hidden = driving;
+      vcfg.repaired = G.up.repair > 0; vcfg.hidden = driving || !!emote;
       vcfg.room = hoseOn ? BG.room() : cap() - tankTotal(); vcfg.fill = tankTotal() / cap();
       vcfg.glitRatio = tankTotal() > 0 ? G.tank.g / tankTotal() : 0; vcfg.sunlit = sunlit;
-      V.update(dt, time, camera, fire && !selling, vcfg, hoseOn ? bcb.onSuck : onSuck);
+      V.update(dt, time, camera, fire && !selling && !emote, vcfg, hoseOn ? bcb.onSuck : onSuck);
       if (driving) A.setVac(BG.suck * 0.9, 0.6, false);
       SK.update(dt);
       if (hoseOn) { hoseP.set(0.36, -0.72, 0.1).applyAxisAngle(tmpV.set(0, 1, 0), PL.yaw).add(camera.position); }
@@ -609,16 +727,21 @@
       W.terrainUniforms.uHint.value = (!G.stats.sectorDone && pc > 0.9) ? U.smoothstep(0.9, 0.95, pc) * 0.9 : 0;
       if (pc > 0.9 && !G.stats.sectorDone && !hintShown) { hintShown = true; UI.toast('Staub-Scanner an: Die letzten Reste leuchten orange.', '', 6); }
 
-      // Wegweiser zur Basis
+      // Wegweiser zur Basis und zu den eigenen Markierungen
       const bd = Math.hypot(PL.pos.x - B.silo.x, PL.pos.z - B.silo.z);
-      if (bd > 24) {
-        tmpV.set(B.silo.x, W.heightAt(B.silo.x, B.silo.z) + 7.5, B.silo.z).project(camera);
-        let sx = tmpV.x, sy = tmpV.y;
-        if (tmpV.z > 1) { sx = -sx; sy = -1; }
-        const m = Math.max(Math.abs(sx) / 0.92, Math.abs(sy) / 0.86, 1);
-        sx /= m; sy /= m;
-        UI.way(true, (sx * 0.5 + 0.5) * window.innerWidth, (-sy * 0.5 + 0.5) * window.innerHeight, bd);
-      } else UI.way(false);
+      if (bd > 24 && toScreen(B.silo.x, W.heightAt(B.silo.x, B.silo.z) + 7.5, B.silo.z)) UI.way(true, scr.x, scr.y, bd); else UI.way(false);
+      const mk = $('marks');
+      while (mk.children.length < G.marks.length) { const d = document.createElement('div'); d.className = 'mark'; d.appendChild(document.createElement('i')); d.appendChild(document.createElement('span')); mk.appendChild(d); }
+      for (let i = 0; i < mk.children.length; i++) {
+        const el = mk.children[i], m = G.marks[i];
+        const md = m ? Math.hypot(PL.pos.x - m.x, PL.pos.z - m.z) : 0;
+        if (!m || md < 3 || !toScreen(m.x, W.heightAt(m.x, m.z) + 2.2, m.z)) { el.style.display = 'none'; continue; }
+        el.style.display = ''; el.style.transform = 'translate(' + scr.x.toFixed(0) + 'px,' + scr.y.toFixed(0) + 'px) translate(-50%,-50%)';
+        const txt = (i + 1) + ' · ' + Math.round(md) + ' m'; if (el.lastChild.textContent !== txt) el.lastChild.textContent = txt;
+      }
+      if (BG.driving !== lastDrive) { lastDrive = BG.driving; showEl('edges', BG.driving); if (BG.driving) { UI.el.keys.classList.add('fade'); keysT = 0; } }
+      const st = BG.driving ? '' : PL.sprint ? 'SPRINT' : PL.crouch ? 'HOCKE' : PL.descending ? 'SINKFLUG' : '';
+      if (st !== lastStance) { lastStance = st; const e = $('stance'); e.textContent = st; e.classList.toggle('hidden', !st); }
       LC.Map.update(dt, PL.pos.x, PL.pos.z, BG.driving ? BG.heading + BG.lookYaw : PL.yaw);
       if (LC.Map.open) document.getElementById('map-pc').textContent = UI.n1(D.percentClean() * 100) + ' % sauber';
 
@@ -631,6 +754,13 @@
         camera.position.y = Math.max(W.heightAt(camera.position.x, camera.position.z) + 2.2, 5.5 + Math.sin(time * 0.05) * 1.2);
         tmpV2.set(-2, 3.4, 1.5); camera.lookAt(tmpV2); camera.updateMatrixWorld();
       }
+      if (state === 'map') LC.Map.update(dt, PL.pos.x, PL.pos.z, BG.driving ? BG.heading + BG.lookYaw : PL.yaw);
+      else if (state === 'globe') {
+        const gp = GL.update(dt, time, camera.aspect, scr), pin = $('globe-pin');
+        pin.style.display = gp ? '' : 'none';
+        if (gp) pin.style.transform = 'translate(' + ((gp.x * 0.5 + 0.5) * window.innerWidth).toFixed(0) + 'px,' + ((-gp.y * 0.5 + 0.5) * window.innerHeight).toFixed(0) + 'px)';
+      }
+      else if (state === 'cut') CS.update(dt, camera.aspect);
       V.idle(dt); A.setBuggy(false, 0);
       UI.prompt(null); UI.warn(null);
     }
@@ -651,7 +781,7 @@
     }
 
     // Helmlampe: hell im Schatten, fast aus in der Sonne
-    lamp.intensity = lampOn && state !== 'menu' ? 0.1 + 2.6 * (1 - sunlit) : 0;
+    lamp.intensity = lampOn && state !== 'menu' && state !== 'cut' ? 0.1 + 2.6 * (1 - sunlit) : 0;
     B.update(time); W.update(time, camera, pxRatio); D.flush(); A.update(dt);
   }
 
@@ -661,7 +791,7 @@
     tp: (x, z, yaw, pitch) => { PL.reset(x, z, yaw || 0); if (pitch != null) PL.pitch = pitch; },
     fire: v => { fire = v; }, money: v => { G.money += v; }, interact, buy,
     sim: (sec, fn) => { const n = Math.round(sec * 60); for (let i = 0; i < n; i++) { if (fn) fn(i / 60); update(1 / 60); } },
-    PL, G, V, D, SK, BG, setTool, sackKey, applyState,
+    PL, G, V, D, SK, BG, CS, GL, setTool, sackKey, applyState, openMap, openGlobe, closeMap, startEmote, startPlay,
     info: () => ({ state, pc: D.percentClean(), tank: tankTotal(), money: G.money, pos: PL.pos.toArray(), post: P.enabled, target: V.target })
   };
 

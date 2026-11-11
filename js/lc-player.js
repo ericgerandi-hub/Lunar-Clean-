@@ -43,7 +43,7 @@
     let wx = -sy * f + cy * s, wz = -cy * f - sy * s;
     const wl = Math.hypot(wx, wz); if (wl > 0) { wx /= wl; wz /= wl; }
     // Sprint und Hocke werden per Tastendruck umgeschaltet (Shift / C)
-    if (wl === 0) { idleT += dt; if (idleT > 0.35) P.sprint = false; } else idleT = 0;
+    if (wl === 0) { idleT += dt; if (idleT > 1.0) P.sprint = false; } else idleT = 0;
     if (P.crouch) P.sprint = false;
     const run = P.sprint;
     const top = P.crouch ? 2.0 : run ? RUN : WALK;

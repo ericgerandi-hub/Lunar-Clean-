@@ -80,12 +80,43 @@
   #mini { position: absolute; right: 22px; top: 20px; width: 176px; height: 176px; border-radius: 50%; border: 1px solid var(--line); box-shadow: 0 0 0 4px rgba(5, 12, 18, .55), 0 0 22px rgba(0, 0, 0, .6); }
   #mini-l { position: absolute; right: 22px; top: 204px; width: 176px; text-align: center; font-size: 11px; letter-spacing: .14em; color: var(--mut); text-shadow: 0 0 5px #000; }
   #mini-l b { color: var(--txt); font-weight: 600; }
+  .mark { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; color: var(--cy); font-size: 12px; letter-spacing: .06em; text-shadow: 0 0 6px #000; }
+  .mark i { width: 11px; height: 11px; border: 2px solid var(--cy); transform: rotate(45deg); background: rgba(111, 230, 255, .3); margin-bottom: 5px; }
+  #emotes { position: absolute; left: 50%; bottom: 15%; transform: translateX(-50%); padding: 10px 14px; display: flex; gap: 16px; font-size: 14.5px; white-space: nowrap; }
+  #emotes kbd { display: inline-block; min-width: 22px; padding: 1px 6px; margin-right: 7px; text-align: center; font: inherit; font-weight: 700; color: #04121a; background: var(--cy); border-radius: 3px; }
+  #stance { align-self: flex-start; padding: 4px 10px; font-size: 11.5px; letter-spacing: .18em; color: #04121a; background: var(--cy); font-weight: 700; }
+  #edges .scr { position: absolute; top: 37%; width: 188px; padding: 6px 6px 5px; background: #0a0d10; border: 2px solid #2b3138; border-radius: 6px; box-shadow: 0 0 0 1px #000, 0 6px 18px rgba(0, 0, 0, .6); }
+  #edges .scr.l { left: 22px; } #edges .scr.r { right: 22px; }
+  #edges canvas { display: block; width: 172px; height: 172px; image-rendering: auto; border-radius: 2px; }
+  #edges .scr span { display: flex; justify-content: space-between; margin-top: 4px; font-size: 10.5px; letter-spacing: .16em; color: var(--mut); }
+  #edges .scr span b { color: var(--am); font-weight: 600; }
+  #globe-ui { position: fixed; inset: 0; pointer-events: none; }
+  #globe-ui .gt { position: absolute; left: 6vw; top: 9vh; }
+  #globe-ui h2 { margin: 0; font-size: clamp(34px, 5vw, 64px); letter-spacing: .12em; }
+  #globe-ui .big { font-size: 22px; color: var(--am); margin-top: 6px; font-variant-numeric: tabular-nums; }
+  #globe-ui .sm { color: var(--mut); margin-top: 8px; font-size: 14.5px; line-height: 1.6; max-width: 420px; }
+  #globe-ui .hint { position: absolute; left: 50%; bottom: 5vh; transform: translateX(-50%); padding: 9px 16px; font-size: 13.5px; color: var(--mut); white-space: nowrap; }
+  #globe-ui .hint b { color: var(--txt); }
+  #globe-pin { position: absolute; left: 0; top: 0; }
+  #globe-pin span { position: absolute; left: 22px; top: -30px; padding: 5px 10px; white-space: nowrap; font-size: 13px; background: rgba(5, 12, 18, .8); border: 1px solid var(--line); color: var(--cy); }
+  #globe-pin span b { display: block; color: var(--txt); font-weight: 400; font-size: 12px; }
+  #cine { position: fixed; inset: 0; pointer-events: none; z-index: 6; }
+  #cine::before, #cine::after { content: ""; position: absolute; left: 0; right: 0; height: 11vh; background: #000; }
+  #cine::before { top: 0; } #cine::after { bottom: 0; }
+  #cine-sub { position: absolute; left: 50%; bottom: 14.5vh; transform: translateX(-50%); max-width: 80vw; text-align: center; font-size: clamp(18px, 2vw, 26px); color: #fff; text-shadow: 0 0 10px #000, 0 2px 4px #000; line-height: 1.4; }
+  #cine-sub.alert { color: #ff6a4a; letter-spacing: .14em; font-weight: 700; animation: fullp2 .5s infinite; }
+  @keyframes fullp2 { 50% { opacity: .35; } }
+  #cine-skip { position: absolute; right: 26px; bottom: 3.6vh; z-index: 2; font-size: 13px; color: rgba(255, 255, 255, .6); letter-spacing: .08em; }
+  #black, #flash { position: fixed; inset: 0; pointer-events: none; opacity: 0; z-index: 5; }
+  #black { background: #000; } #flash { background: #fff; }
   #keys { position: absolute; right: 22px; top: 232px; padding: 10px 14px; font-size: 13px; color: var(--mut); line-height: 1.7; transition: opacity 1.5s; }
   #keys b { color: var(--txt); font-weight: 600; display: inline-block; min-width: 132px; }
   #keys.fade { opacity: 0; }
-  #bigmap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0, 4, 8, .45); }
+  #bigmap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0, 4, 8, .55); pointer-events: auto; }
   #bigmap .panel { padding: 14px 16px 12px; }
-  #bigmap canvas { display: block; margin: 12px 0 10px; border-radius: 50%; }
+  #bigmap canvas { display: block; margin: 12px 0 10px; border-radius: 4px; cursor: crosshair; }
+  #bigmap .hint { font-size: 12.5px; color: var(--mut); margin-top: 8px; }
+  #bigmap .hint b { color: var(--txt); }
   #bigmap .leg { display: flex; gap: 16px; font-size: 12.5px; color: var(--mut); align-items: center; flex-wrap: wrap; }
   #bigmap .leg i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; }
   #bigmap .leg b { color: var(--txt); }
@@ -162,13 +193,14 @@
   <canvas id="mini"></canvas>
   <div id="mini-l"><b>M</b> KARTE</div>
   <div id="keys" class="panel">
-    <b>W A S D</b>Laufen<br><b>Maus</b>Umsehen<br><b>Linke Maustaste</b>Putzen<br><b>1 – 4 / Mausrad</b>Werkzeug<br><b>G</b>Sack füllen und werfen<br><b>Leertaste</b>Springen<br><b>Shift</b>Rennen<br><b>E</b>Benutzen<br><b>F</b>Helmlampe<br><b>M</b>Karte<br><b>Esc</b>Pause
+    <b>W A S D</b>Laufen<br><b>Maus</b>Umsehen<br><b>Linke Maustaste</b>Putzen<br><b>1 – 4 / Mausrad</b>Werkzeug<br><b>G</b>Sack füllen und werfen<br><b>Leertaste</b>Springen (Jetpack: hoch)<br><b>Shift</b>Sprint an/aus<br><b>C</b>Hocke an/aus (Jetpack: runter)<br><b>X</b>Emotes<br><b>E</b>Benutzen<br><b>F</b>Helmlampe<br><b>M</b>Karte / ganzer Mond<br><b>Esc</b>Pause
   </div>
   <div id="hud-blw">
     <div id="jet" class="panel hidden">
       <div class="lbl"><span>Jetpack</span><b id="jet-v">100 %</b></div>
       <div class="bar"><i id="jet-b"></i></div>
     </div>
+    <div id="stance" class="hidden"></div>
     <div id="tools" class="hidden"></div>
     <div id="hud-bl" class="panel">
       <div class="lbl"><span id="tank-l">Staubbehälter</span><b id="tank-v">0 / 12 kg</b></div>
@@ -181,8 +213,20 @@
   <div id="warn" class="panel hidden"></div>
   <div id="toasts"></div>
   <div id="way" class="hidden"><i></i><span id="way-d"></span></div>
-  <div id="bigmap" class="hidden"><div class="panel"><div class="lbl"><span>Karte · Sektor 1</span><b id="map-pc"></b></div><canvas id="bigmap-c"></canvas><div class="leg"><span><i style="background:#d6e0e8"></i>geputzt</span><span><i style="background:#40372f"></i>Staub</span><span><i style="background:#6058cd"></i>Glitzerstaub</span><span><i style="background:#ffbf5a;border-radius:50%"></i>Staublager</span><span><i style="background:#6fe6ff"></i>Werkstatt</span><span style="margin-left:auto"><b>M</b> schließen</span></div></div></div>
+  <div id="edges" class="hidden"><div class="scr l"><canvas id="edge-l"></canvas><span>KANTE LINKS<b>▮ SPUR</b></span></div><div class="scr r"><canvas id="edge-r"></canvas><span>KANTE RECHTS<b>▮ SPUR</b></span></div></div>
+  <div id="marks"></div>
+  <div id="emotes" class="panel hidden"></div>
+  <div id="bigmap" class="hidden"><div class="panel"><div class="lbl"><span>Karte · Sektor 1</span><b id="map-pc"></b></div><canvas id="bigmap-c"></canvas><div class="leg"><span><i style="background:#d6e0e8"></i>geputzt</span><span><i style="background:#40372f"></i>Staub</span><span><i style="background:#6058cd"></i>Glitzerstaub</span><span><i style="background:#ffbf5a;border-radius:50%"></i>Staublager</span><span><i style="background:#6fe6ff"></i>Werkstatt</span><span><i style="background:#6fe6ff;transform:rotate(45deg)"></i>Markierung</span></div><div class="hint"><b>Ziehen</b> verschieben · <b>Mausrad</b> zoomen · <b>Klick</b> Markierung setzen oder löschen · <b>M</b> ganzer Mond · <b>Esc</b> schließen</div></div></div>
   <div id="fps"></div>
+</div>
+
+<div id="black"></div><div id="flash"></div>
+<div id="cine" class="hidden"><div id="cine-sub"></div><div id="cine-skip">LEERTASTE · ÜBERSPRINGEN</div></div>
+<div id="globe-ui" class="hidden">
+  <div class="gt"><h2>DER MOND</h2><div class="big">Gesamt sauber: <span id="globe-pc">0 %</span></div>
+    <div class="sm"><span id="globe-sec"></span><br>Jedes Kästchen im Gitter ist ein Sektor. Du fängst mit einem an – der Rest wartet noch auf dich.</div></div>
+  <div id="globe-pin"><span>SEKTOR 1<b>Absturzstelle · du bist hier</b></span></div>
+  <div class="hint panel"><b>Maus ziehen</b> drehen · <b>Mausrad</b> zoomen · <b>M</b> oder <b>Esc</b> zurück ins Spiel</div>
 </div>
 
 <div id="menu" class="overlay hidden">
@@ -198,7 +242,8 @@
     <span><b>W A S D</b> · Laufen</span><span><b>Linke Maustaste</b> · Putzen</span>
     <span><b>1 – 4</b> · Werkzeug wechseln</span><span><b>G</b> · Behälter in einen Sack füllen</span>
     <span><b>Leertaste</b> · Springen</span><span><b>E</b> · Benutzen (Staublager, Werkstatt)</span>
-    <span><b>Shift</b> · Rennen</span><span><b>M</b> · Karte</span>
+    <span><b>Shift</b> · Sprint an/aus</span><span><b>M</b> · Karte und ganzer Mond</span>
+    <span><b>C</b> · Hocke an/aus</span><span><b>X</b> · Emotes</span>
     <span><b>F</b> · Helmlampe</span><span><b>Esc</b> · Pause und Einstellungen</span>
   </div>
 </div>
@@ -233,18 +278,21 @@
 <div id="loading"><b>LUNAR CLEAN</b><span>MONDOBERFLÄCHE WIRD VERSTAUBT …</span></div>
 
 <script src="lib/three.min.js"></script>
-<script src="js/lc-util.js?v=0.3.0"></script>
-<script src="js/lc-world.js?v=0.3.0"></script>
-<script src="js/lc-dust.js?v=0.3.0"></script>
-<script src="js/lc-base.js?v=0.3.0"></script>
-<script src="js/lc-audio.js?v=0.3.0"></script>
-<script src="js/lc-player.js?v=0.3.0"></script>
-<script src="js/lc-vacuum.js?v=0.3.0"></script>
-<script src="js/lc-post.js?v=0.3.0"></script>
-<script src="js/lc-sacks.js?v=0.3.0"></script>
-<script src="js/lc-buggy.js?v=0.3.0"></script>
-<script src="js/lc-map.js?v=0.3.0"></script>
-<script src="js/lc-ui.js?v=0.3.0"></script>
-<script src="js/lc-main.js?v=0.3.0"></script>
+<script src="js/lc-util.js?v=0.4.0"></script>
+<script src="js/lc-world.js?v=0.4.0"></script>
+<script src="js/lc-dust.js?v=0.4.0"></script>
+<script src="js/lc-base.js?v=0.4.0"></script>
+<script src="js/lc-audio.js?v=0.4.0"></script>
+<script src="js/lc-player.js?v=0.4.0"></script>
+<script src="js/lc-vacuum.js?v=0.4.0"></script>
+<script src="js/lc-post.js?v=0.4.0"></script>
+<script src="js/lc-sacks.js?v=0.4.0"></script>
+<script src="js/lc-buggy.js?v=0.4.0"></script>
+<script src="js/lc-map.js?v=0.4.0"></script>
+<script src="js/lc-avatar.js?v=0.4.0"></script>
+<script src="js/lc-globe.js?v=0.4.0"></script>
+<script src="js/lc-cutscene.js?v=0.4.0"></script>
+<script src="js/lc-ui.js?v=0.4.0"></script>
+<script src="js/lc-main.js?v=0.4.0"></script>
 </body>
 </html>

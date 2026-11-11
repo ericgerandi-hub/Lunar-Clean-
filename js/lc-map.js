@@ -193,5 +193,40 @@
     ctx.restore();
   };
 
+  // Kanten-Monitore im Buggy: Blick von oben auf die linke und rechte Saugkante
+  const EN = 96, EVIEW = 5.2;
+  let edge = null, edgeT = 0;
+  M.edges = function (dt, bx, bz, heading, headDist, headR, sucking) {
+    if (!edge) {
+      edge = ['edge-l', 'edge-r'].map(id => { const c = document.getElementById(id); c.width = c.height = EN; const x = c.getContext('2d'); return { c, x, img: x.createImageData(EN, EN) }; });
+    }
+    edgeT -= dt; if (edgeT > 0) return; edgeT = 0.05;
+    const sh = Math.sin(heading), ch = Math.cos(heading), fx = -sh, fz = -ch, rx = ch, rz = -sh;
+    const hx = bx + fx * headDist, hz = bz + fz * headDist, src = D.data, gl = D.glit, DN = D.N, k = EVIEW / EN;
+    for (let e = 0; e < 2; e++) {
+      const sd = e ? 1 : -1, cx = hx + rx * headR * sd, cz = hz + rz * headR * sd, d = edge[e].img.data;
+      for (let j = 0; j < EN; j++) {
+        const lz = (EN / 2 - j - 0.5) * k + 0.6;                 // oben = vorn
+        for (let i = 0; i < EN; i++) {
+          const lx = (i + 0.5 - EN / 2) * k, wx = cx + rx * lx + fx * lz, wz = cz + rz * lx + fz * lz;
+          const ii = Math.floor((wx / SIZE + 0.5) * DN), jj = Math.floor((wz / SIZE + 0.5) * DN);
+          let dust = 1, g = 0;
+          if (ii >= 0 && jj >= 0 && ii < DN && jj < DN) { dust = src[jj * DN + ii] / 255; g = gl[jj * DN + ii] / 255; }
+          const n = 0.9 + ((ii * 7 + jj * 13) % 5) * 0.04;
+          let cr = 70, cg = 60, cb = 52; if (g > 0.3) { cr = 100; cg = 92; cb = 210; }
+          const q = (j * EN + i) * 4;
+          d[q] = U.lerp(222, cr, dust) * n; d[q + 1] = U.lerp(230, cg, dust) * n; d[q + 2] = U.lerp(238, cb, dust) * n; d[q + 3] = 255;
+        }
+      }
+      const x = edge[e].x; x.putImageData(edge[e].img, 0, 0);
+      const px = EN / EVIEW, mid = EN / 2, zy = mid + 0.6 * px;          // Bildpunkt der Kante
+      // Saugbereich (Kreis um den Saugkopf) und der Saugkopf selbst
+      x.strokeStyle = sucking ? '#6fe6ff' : 'rgba(111,230,255,.5)'; x.lineWidth = 1.5;
+      x.beginPath(); x.arc(mid - sd * headR * px, zy, headR * px, 0, Math.PI * 2); x.stroke();
+      x.fillStyle = 'rgba(20,22,26,.92)'; x.fillRect(sd > 0 ? 0 : mid - 2.5, zy - 0.3 * px, mid + 2.5, 0.6 * px);
+      x.fillStyle = '#ffbf5a'; x.fillRect(mid - 0.5, 0, 1, EN);          // Hilfslinie: genau hier endet die Spur
+    }
+  };
+
   LC.Map = M;
 })(window.LC);

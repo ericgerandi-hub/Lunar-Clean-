@@ -16,17 +16,20 @@ und verdien dir so den Rückflug.
 | 1 – 4 / Mausrad | Werkzeug wechseln |
 | G | Behälter in einen Sack füllen und hinwerfen |
 | Leertaste | Springen (in der Luft halten: Jetpack) |
-| Shift | Rennen |
+| Shift | Sprint an/aus |
+| C | Hocke an/aus · mit Jetpack in der Luft halten: runter |
+| X, dann 1–6 | Emotes |
 | E | Benutzen (Staublager, Werkstatt, Sack aufheben, Buggy) |
 | F | Helmlampe an/aus |
-| M | Karte |
+| M | Karte (Maus: verschieben, zoomen, Markierungen) · noch mal M: ganzer Mond |
 | Esc | Pause und Einstellungen |
 
-## Stand (Version 0.3.0)
+## Stand (Version 0.4.0)
 
 Sektor 1 (ein Krater) mit Werkzeug-Reihe Löffel → Schaufel → Handsauger → Industriesauger XL → Mondbuggy,
 Säcken zum Abstellen, Staublager und Fahrzeug-Entladestation, Werkstatt mit Upgrades, Jetpack, Glitzerstaub,
-Minimap und Karte, Vollbildmodus, automatischem Speichern.
+Minimap, Karte mit Markierungen, Mond-Ansicht, Intro, Emotes, Kanten-Monitoren im Buggy, Vollbildmodus,
+automatischem Speichern.
 
 Geplant: Gleiter und Raumschiff, Putzroboter und Luftkanäle, Staubpresse, Händler mit schwankenden Preisen,
 Hangar, weitere Sektoren, Mehrspieler für 2–3 Spieler.

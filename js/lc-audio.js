@@ -112,6 +112,15 @@
         src.connect(f); f.connect(g); g.connect(master); src.start(t, Math.random()); src.stop(t + 0.3);
         break;
       }
+      case 'alarm': tone(880, 0.16, 'square', 0.06); tone(660, 0.16, 'square', 0.06, 0.2); break;
+      case 'boom': {
+        const c = A.ctx, t = c.currentTime, src = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+        src.buffer = noiseBuf; f.type = 'lowpass'; f.frequency.setValueAtTime(900, t); f.frequency.exponentialRampToValueAtTime(60, t + 1.6);
+        g.gain.setValueAtTime(0.9, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.2);
+        src.connect(f); f.connect(g); g.connect(master); src.start(t); src.stop(t + 2.3);
+        tone(70, 1.4, 'sine', 0.6, 0, 24);
+        break;
+      }
       case 'thump': tone(110, 0.22, 'sine', 0.2, 0, 45); break;
       case 'engine': break;
       case 'click': tone(1200, 0.04, 'square', 0.03); break;

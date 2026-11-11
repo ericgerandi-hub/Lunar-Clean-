@@ -23,13 +23,13 @@
     }
     g.putImageData(img, 0, 0);
     const rnd = U.rng(606);
-    for (let n = 0; n < 520; n++) {
-      const x = rnd() * Wd, y = Hd * (0.08 + rnd() * 0.84), r = 1.5 + Math.pow(rnd(), 3.2) * 26, sx = 1 / Math.max(0.3, Math.sin(Math.PI * y / Hd));
+    for (let n = 0; n < 900; n++) {
+      const x = rnd() * Wd, y = Hd * (0.08 + rnd() * 0.84), r = 1.2 + Math.pow(rnd(), 4.0) * 15, sx = 1 / Math.max(0.3, Math.sin(Math.PI * y / Hd));
       for (const ox of [-Wd, 0, Wd]) {
         g.save(); g.translate(x + ox, y); g.scale(sx, 1);
-        g.fillStyle = 'rgba(20,14,10,' + (0.25 + rnd() * 0.2) + ')'; g.beginPath(); g.arc(0, 0, r, 0, 6.283); g.fill();
-        g.strokeStyle = 'rgba(235,215,190,' + (0.25 + rnd() * 0.25) + ')'; g.lineWidth = Math.max(0.8, r * 0.16); g.beginPath(); g.arc(0, 0, r, 3.6, 5.9); g.stroke();
-        g.strokeStyle = 'rgba(0,0,0,0.35)'; g.beginPath(); g.arc(0, 0, r, 0.5, 2.7); g.stroke();
+        g.fillStyle = 'rgba(20,14,10,' + (0.12 + rnd() * 0.14) + ')'; g.beginPath(); g.arc(0, 0, r, 0, 6.283); g.fill();
+        g.strokeStyle = 'rgba(235,215,190,' + (0.16 + rnd() * 0.18) + ')'; g.lineWidth = Math.max(0.7, r * 0.12); g.beginPath(); g.arc(0, 0, r, 3.6, 5.9); g.stroke();
+        g.strokeStyle = 'rgba(0,0,0,0.22)'; g.beginPath(); g.arc(0, 0, r, 0.5, 2.7); g.stroke();
         g.restore();
       }
     }
@@ -68,9 +68,9 @@
     const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp, 3));
     scene.add(new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xffffff, size: 1.6, sizeAttenuation: false, transparent: true, opacity: 0.85, depthWrite: false })));
     // Erde in der Ferne (für das Intro)
-    earth = new THREE.Mesh(new THREE.SphereGeometry(2.2, 40, 28), new THREE.MeshStandardMaterial({ color: 0x2a62c8, roughness: 0.7, emissive: 0x0a1c44, emissiveIntensity: 0.6 }));
+    earth = new THREE.Mesh(new THREE.SphereGeometry(2.2, 40, 28), new THREE.MeshStandardMaterial({ color: 0x163f96, roughness: 0.8, emissive: 0x06122c, emissiveIntensity: 0.4 }));
     earth.material.envMapIntensity = 0; earth.position.set(-26, 6, -34); scene.add(earth);
-    const cl = new THREE.Mesh(new THREE.SphereGeometry(2.24, 40, 28), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, transparent: true, opacity: 0.35 })); cl.material.envMapIntensity = 0; earth.add(cl);
+    const cl = new THREE.Mesh(new THREE.SphereGeometry(2.24, 40, 28), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, transparent: true, opacity: 0.13 })); cl.material.envMapIntensity = 0; earth.add(cl);
     // kleines Schiff (nur im Intro sichtbar)
     ship = new THREE.Group();
     const mW = new THREE.MeshStandardMaterial({ color: 0xc8c5bd, roughness: 0.5, metalness: 0.3 }), mO = new THREE.MeshStandardMaterial({ color: 0xc9581a, roughness: 0.5 });
@@ -79,7 +79,7 @@
     const band = new THREE.Mesh(new THREE.CylinderGeometry(0.205, 0.205, 0.12, 16), mO); band.rotation.x = Math.PI / 2; band.position.z = -0.3; ship.add(band);
     const wing = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.03, 0.4), mW); wing.position.z = 0.25; ship.add(wing);
     const fin = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.34, 0.3), mW); fin.position.set(0, 0.22, 0.35); ship.add(fin);
-    shipGlow = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 5, 9) })); shipGlow.position.z = 0.56; shipGlow.scale.z = 2.2; ship.add(shipGlow);
+    shipGlow = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(1.2, 2.2, 4.2) })); shipGlow.position.z = 0.56; shipGlow.scale.z = 2.2; ship.add(shipGlow);
     ship.visible = false; scene.add(ship);
     GL.scene = scene; GL.camera = cam;
   };
@@ -116,7 +116,7 @@
     ship.position.copy(from).lerp(to, Math.pow(u, 1.25));
     ship.lookAt(to); ship.rotateY(Math.PI);          // Nase (-z) zeigt zum Ziel
     ship.rotateZ(Math.sin(t * 1.3) * 0.08);
-    ship.scale.setScalar(0.34 - u * 0.2);
+    ship.scale.setScalar(0.62 - u * 0.42);
     shipGlow.scale.set(1 + Math.random() * 0.25, 1 + Math.random() * 0.25, 2 + Math.random() * 0.8);
     ring.scale.setScalar(1); ring.material.opacity = 0;
   };

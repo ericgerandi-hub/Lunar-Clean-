@@ -106,7 +106,7 @@
       av.head.rotation.x = -0.3 * k + s(t * 0.9) * 0.05;
     } else if (id === 'flip') {
       const u = Math.min(1, Math.max(0, (t - 0.3) / (dur - 0.7)));
-      av.body.position.y = 4 * u * (1 - u) * 1.9;
+      av.body.position.y = 4 * u * (1 - u) * 1.0;
       const body = av.body; body.rotation.x = u * PI * 2;
       // um die Körpermitte drehen statt um die Füße
       const c = 1.1; body.position.y += c - Math.cos(u * PI * 2) * c; body.position.z = -Math.sin(u * PI * 2) * c;

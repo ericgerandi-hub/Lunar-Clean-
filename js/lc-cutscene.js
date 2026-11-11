@@ -37,7 +37,7 @@
     B.ship.visible = true;
     A.setJet(0);
   }
-  CS.skip = function () { if (CS.active && CS.t > 0.6) finish(); };
+  CS.skip = function (force) { if (CS.active && (force || CS.t > 0.6)) finish(); };
   function finish() {
     if (!CS.active) return;
     CS.active = false; cleanup();

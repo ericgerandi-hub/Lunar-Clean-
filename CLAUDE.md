@@ -17,7 +17,10 @@ Spielplan (alle Entscheidungen des Nutzers): https://claude.ai/artifact/FeVhH9CZ
   - `lc-buggy.js` Mondbuggy (fahren, Saugkopf, 1.500 kg Laderaum, Schlauch für den Handsauger) und Fahrzeug-Entladestation
   - `lc-post.js` HDR, Bloom, Filmkurve (fällt ohne Float-Texturen auf direktes Zeichnen zurück)
   - `lc-audio.js` alle Töne und Musik live erzeugt (keine Audiodateien)
-  - `lc-map.js` Minimap (dreht mit) und große Karte (Taste M), gezeichnet aus der Staubkarte
+  - `lc-map.js` Minimap (dreht mit), große Karte (Taste M; Maus: verschieben, zoomen, Markierungen), Kanten-Monitore im Buggy
+  - `lc-avatar.js` Astronauten-Figur und Emotes (X, dann Zahl); auch für Mitspieler gedacht
+  - `lc-globe.js` ganzer Mond als Kugel (zweimal M) und Weltraum-Szene fürs Intro
+  - `lc-cutscene.js` Intro (Anflug, Absturz, Blackout, Aufwachen), überspringbar
   - `lc-ui.js` HUD, Werkstatt-Fenster
   - `lc-main.js` Spielstand, Upgrades (`UP`), Preise, Ziele (`GOALS`), Hauptschleife, Speichern
 
@@ -40,5 +43,8 @@ Spielplan (alle Entscheidungen des Nutzers): https://claude.ai/artifact/FeVhH9CZ
 - Wunsch des Nutzers: viele verschiedene Putz-Werkzeuge, die man nacheinander kauft (nicht nur einen Sauger upgraden);
   große Fahrzeuge kommen spät und haben eine eigene Entladestation. Werkzeug-Daten: `TOOLS` und `UP` in `lc-main.js`.
 - Die Schattenkarte der Sonne steht still (`shadowMap.autoUpdate = false`); bewegte Dinge brauchen `shadowFrames = 2` oder einen eigenen weichen Schatten (Buggy).
+- Zustände in `lc-main.js`: menu, cut (Intro), play, map, globe, shop, pause, wait. Tasten: Shift und C schalten um (Sprint/Hocke),
+  C in der Luft mit Jetpack = sinken. Neue Ziele am Anfang verschieben `G.stage`: beim Laden über `gv` anpassen.
+- Nächster großer Schritt, den der Nutzer bald will: Mehrspieler.
 - Noch nicht gebaut (siehe Spielplan): Gleiter, Raumschiff, Putzroboter, Luftkanäle, Staubpresse, Drohnen,
   Händler mit schwankenden Preisen, Hangar/Garage/Solarpark, Rakete als Spielziel, Handy-Steuerung.
