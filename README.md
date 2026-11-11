@@ -24,9 +24,9 @@ und verdien dir so den Rückflug.
 | M | Karte (Maus: verschieben, zoomen, Markierungen) · noch mal M: ganzer Mond |
 | Esc | Pause und Einstellungen |
 
-## Stand (Version 0.4.1)
+## Stand (Version 0.5.0)
 
-Sektor 1 (ein Krater) mit Werkzeug-Reihe Löffel → Schaufel → Handsauger → Industriesauger XL → Mondbuggy,
+Zwei Sektoren (Krater mit Basis, dazu per Tunnel der größere Sektor 2 mit Roststaub und Außenposten), Werkzeug-Reihe Löffel → Schaufel → Handsauger → Industriesauger XL → Mondbuggy,
 Säcken zum Abstellen, Staublager und Fahrzeug-Entladestation, Werkstatt mit Upgrades, Jetpack, Glitzerstaub,
 Minimap, Karte mit Markierungen, Mond-Ansicht, Intro, Emotes, Kanten-Monitoren im Buggy, Vollbildmodus,
 automatischem Speichern.

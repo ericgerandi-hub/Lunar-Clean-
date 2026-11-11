@@ -6,11 +6,18 @@
   const U = LC.U;
   const W = {};
 
-  W.CR = 72;        // Radius des Kraterbodens (Sektor 1)
+  // Jeder Sektor ist ein eigener Krater. Größen in Metern.
+  W.SECTORS = {
+    1: { name: 'Sektor 1', CR: 72, RIM: 96, RIM_H: 15, LIMIT: 78, SIZE: 160, CLEAN: 74, seed: 20261111, nCr: 36, off: 0, tint: [1, 1, 1] },
+    2: { name: 'Sektor 2', CR: 112, RIM: 140, RIM_H: 19, LIMIT: 118, SIZE: 256, CLEAN: 114, seed: 424242, nCr: 66, off: 913, tint: [1.55, 0.78, 0.55], peak: true }
+  };
+  W.sec = 1; W.cfg = W.SECTORS[1];
+  W.CR = 72;        // Radius des Kraterbodens
   W.RIM = 96;       // Kamm des Kraterrands
   W.RIM_H = 15;     // Höhe des Kraterrands
-  W.LIMIT = 78;     // so weit kommt man zu Fuß
+  W.LIMIT = 78;     // so weit kommt man
   W.DUST_SIZE = 160; // Kantenlänge der Staubkarte in Metern
+  W.CLEAN = 74;     // bis hierhin kann geputzt werden
   W.SUN_DIR = new THREE.Vector3(0.75, 0.47, 0.45).normalize();
   W.EARTH_DIR = new THREE.Vector3(-0.30, 0.46, -0.84).normalize();
 
@@ -28,27 +35,37 @@
 
   // ---------- Krater ----------
   // Drei tiefe Krater mit seltenem Glitzerstaub
-  W.glitterCraters = [
-    { x: -40, z: 31, R: 8.5, d: 3.3 },
-    { x: 47, z: -25, R: 7.5, d: 2.9 },
-    { x: 15, z: -53, R: 9.5, d: 3.7 }
-  ];
-  W.craters = W.glitterCraters.slice();
-  (function () {
-    const rnd = U.rng(20261111);
+  W.glitterCraters = []; W.craters = [];
+  function genCraters() {
+    const c = W.cfg, rnd = U.rng(c.seed);
+    if (W.sec === 1) W.glitterCraters = [{ x: -40, z: 31, R: 8.5, d: 3.3 }, { x: 47, z: -25, R: 7.5, d: 2.9 }, { x: 15, z: -53, R: 9.5, d: 3.7 }];
+    else W.glitterCraters = [{ x: -62, z: 38, R: 11, d: 4.2 }, { x: 70, z: 22, R: 9, d: 3.5 }, { x: 34, z: -78, R: 12, d: 4.6 }, { x: -48, z: -66, R: 8.5, d: 3.3 }, { x: -86, z: -14, R: 9.5, d: 3.6 }, { x: 78, z: -44, R: 8, d: 3.1 }];
+    W.craters = W.glitterCraters.slice();
     let tries = 0;
-    while (W.craters.length < 36 && tries < 6000) {
+    while (W.craters.length < c.nCr && tries < 9000) {
       tries++;
       const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * (W.CR - 5);
       const x = Math.cos(a) * r, z = Math.sin(a) * r;
-      const R = 1.6 + Math.pow(rnd(), 2.4) * 7.5;
+      const R = 1.6 + Math.pow(rnd(), 2.4) * (W.sec === 1 ? 7.5 : 10);
       const d = R * (0.15 + rnd() * 0.11);
-      if (Math.hypot(x, z) < 26 + R) continue;                // Basis frei lassen
-      if (furrowInfo(x, z).d < R + 7) continue;                // Furche frei lassen
-      if (W.craters.some(c => Math.hypot(c.x - x, c.z - z) < (c.R + R) * 1.3)) continue;
+      if (W.sec === 1) {
+        if (Math.hypot(x, z) < 26 + R) continue;                // Basis frei lassen
+        if (furrowInfo(x, z).d < R + 7) continue;                // Furche frei lassen
+      } else {
+        if (Math.hypot(x, z) < 44 + R) continue;                // Zentralberg
+        if (Math.hypot(x + 8, z - 100) < 26 + R) continue;      // Außenposten frei lassen
+      }
+      if (W.craters.some(k => Math.hypot(k.x - x, k.z - z) < (k.R + R) * 1.3)) continue;
       W.craters.push({ x, z, R, d });
     }
-  })();
+  }
+  W.setSector = function (n) {
+    const c = W.SECTORS[n]; W.sec = n; W.cfg = c;
+    W.CR = c.CR; W.RIM = c.RIM; W.RIM_H = c.RIM_H; W.LIMIT = c.LIMIT; W.DUST_SIZE = c.SIZE; W.CLEAN = c.CLEAN;
+    W.flats = [];
+    genCraters();
+  };
+  genCraters();
 
   W.flats = [];
   // muss vor W.build aufgerufen werden
@@ -56,14 +73,14 @@
 
   // ---------- Höhe des Geländes ----------
   W.heightAt = function (x, z) {
-    const r = Math.hypot(x, z);
-    let h = (U.fbm(x * 0.028 + 11.3, z * 0.028 - 4.1, 3, 5) - 0.5) * 2.4;
-    h += (U.fbm(x * 0.21 + 3.7, z * 0.21 + 9.2, 3, 9) - 0.5) * 0.34;
+    const r = Math.hypot(x, z), nx = x + W.cfg.off, nz = z - W.cfg.off * 0.6;
+    let h = (U.fbm(nx * 0.028 + 11.3, nz * 0.028 - 4.1, 3, 5) - 0.5) * 2.4;
+    h += (U.fbm(nx * 0.21 + 3.7, nz * 0.21 + 9.2, 3, 9) - 0.5) * 0.34;
 
     const wallStart = W.CR - 12;
     if (r > wallStart) {
       const ang = Math.atan2(z, x);
-      const rimVar = 0.72 + 0.6 * U.fbm(Math.cos(ang) * 2.3 + 7, Math.sin(ang) * 2.3 + 3, 3, 21);
+      const rimVar = 0.72 + 0.6 * U.fbm(Math.cos(ang) * 2.3 + 7 + W.cfg.off, Math.sin(ang) * 2.3 + 3, 3, 21);
       const top = W.RIM_H * rimVar;
       if (r < W.RIM) {
         const s = U.smooth((r - wallStart) / (W.RIM - wallStart));
@@ -72,11 +89,11 @@
         const s2 = U.smoothstep(W.RIM, W.RIM + 150, r);
         h += top * (1 - s2) + 5 * s2;
         // raue Hänge außen
-        h += (U.fbm(x * 0.05, z * 0.05, 4, 33) - 0.5) * 7 * U.smoothstep(W.RIM, W.RIM + 60, r);
-        if (r > 240) {
+        h += (U.fbm(nx * 0.05, nz * 0.05, 4, 33) - 0.5) * 7 * U.smoothstep(W.RIM, W.RIM + 60, r);
+        if (r > W.RIM + 144) {
           // ferne Berge am Horizont
-          const m = U.smoothstep(240, 700, r);
-          const n = U.fbm(x * 0.0035 + 40, z * 0.0035 - 17, 5, 51);
+          const m = U.smoothstep(W.RIM + 144, W.RIM + 604, r);
+          const n = U.fbm(nx * 0.0035 + 40, nz * 0.0035 - 17, 5, 51);
           const ridge = 1 - Math.abs(n * 2 - 1);
           h += m * (ridge * ridge * 210 + n * 60 - 40);
         }
@@ -92,15 +109,22 @@
         if (d < 1) { const q = 1 - d * d; h -= c.d * q * q; }
         if (d < 1.9) { const e = (d - 1.05) / 0.26; h += c.d * 0.2 * Math.exp(-e * e); }
       }
-      // Furche vom Absturz + aufgeschobener Wall
-      const f = furrowInfo(x, z);
-      if (f.d < 9) {
-        const depth = 1.25 * Math.pow(f.t, 0.6);
-        const g = f.d / 2.3, b = (f.d - 3.7) / 1.25;
-        h += -depth * Math.exp(-g * g) + depth * 0.32 * Math.exp(-b * b);
+      if (W.sec === 1) {
+        // Furche vom Absturz + aufgeschobener Wall
+        const f = furrowInfo(x, z);
+        if (f.d < 9) {
+          const depth = 1.25 * Math.pow(f.t, 0.6);
+          const g = f.d / 2.3, b = (f.d - 3.7) / 1.25;
+          h += -depth * Math.exp(-g * g) + depth * 0.32 * Math.exp(-b * b);
+        }
+        const mx = x - 2.6, mz = z - 0.7, md = (mx * mx + mz * mz) / 10;
+        if (md < 6) h += 1.15 * Math.exp(-md);
       }
-      const mx = x - 2.6, mz = z - 0.7, md = (mx * mx + mz * mz) / 10;
-      if (md < 6) h += 1.15 * Math.exp(-md);
+      if (W.cfg.peak && r < 46) {
+        // Zentralberg: zu steil zum Putzen, man fährt außen herum
+        const q = r / 18;
+        h += 15 * Math.exp(-q * q) * (0.8 + 0.4 * U.fbm(nx * 0.12, nz * 0.12, 3, 77));
+      }
       // eingeebnete Flächen (Landeplatz, Entladestation): das Gelände ragt dort nicht durch den Boden
       for (let i = 0; i < W.flats.length; i++) {
         const f = W.flats[i], dx = x - f.x, dz = z - f.z, d2 = dx * dx + dz * dz, ro = f.r + 2.5;
@@ -174,16 +198,17 @@
 
   // ---------- Gelände-Gitter ----------
   function buildAxis() {
-    const inner = [];
-    for (let i = 0; i <= 400; i++) inner.push(-100 + i * 0.5);
-    const outer = []; let s = 0.6, v = 100;
+    const half = W.RIM + 6, step = half / 200, inner = [];
+    for (let i = 0; i <= 400; i++) inner.push(-half + i * step);
+    const outer = []; let s = step * 1.2, v = half;
     for (let i = 0; i < 40; i++) { v += s; outer.push(v); s *= 1.17; }
     return outer.map(o => -o).reverse().concat(inner, outer);
   }
 
-  function buildTerrain(dustTex, glitTex) {
+  // Gelände-Punkte (neu) berechnen – auch beim Wechsel des Sektors
+  function fillTerrain(geo) {
     const ax = buildAxis(), n = ax.length;
-    const pos = new Float32Array(n * n * 3), nor = new Float32Array(n * n * 3), uv = new Float32Array(n * n * 2);
+    const pos = geo.attributes.position.array, nor = geo.attributes.normal.array, uv = geo.attributes.uv.array;
     const hs = new Float32Array(n * n);
     for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) hs[j * n + i] = W.heightAt(ax[i], ax[j]);
     for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
@@ -196,6 +221,13 @@
       const l = Math.sqrt(dhx * dhx + 1 + dhz * dhz);
       nor[k * 3] = -dhx / l; nor[k * 3 + 1] = 1 / l; nor[k * 3 + 2] = -dhz / l;
     }
+    geo.attributes.position.needsUpdate = true; geo.attributes.normal.needsUpdate = true; geo.attributes.uv.needsUpdate = true;
+    geo.computeBoundingSphere();
+  }
+
+  function buildTerrain(dustTex, glitTex) {
+    const n = buildAxis().length;
+    const pos = new Float32Array(n * n * 3), nor = new Float32Array(n * n * 3), uv = new Float32Array(n * n * 2);
     const idx = new Uint32Array((n - 1) * (n - 1) * 6); let q = 0;
     for (let j = 0; j < n - 1; j++) for (let i = 0; i < n - 1; i++) {
       const a = j * n + i, b = a + 1, c = a + n, d = c + 1;
@@ -206,7 +238,7 @@
     geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
     geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
     geo.setIndex(new THREE.BufferAttribute(idx, 1));
-    geo.computeBoundingSphere();
+    fillTerrain(geo);
 
     const noiseTex = makeNoiseTexture();
     W.noiseTex = noiseTex;
@@ -218,7 +250,7 @@
     mat.envMapIntensity = 0;
     const uni = {
       dustMap: { value: dustTex }, glitMap: { value: glitTex }, noiseTex: { value: noiseTex },
-      uTime: { value: 0 }, uDustSize: { value: W.DUST_SIZE }, uHint: { value: 0 }
+      uTime: { value: 0 }, uDustSize: { value: W.DUST_SIZE }, uHint: { value: 0 }, uClean: { value: W.CLEAN }, uTint: { value: new THREE.Vector3(1, 1, 1) }
     };
     W.terrainUniforms = uni;
     mat.onBeforeCompile = function (sh) {
@@ -227,7 +259,7 @@
         '#include <begin_vertex>\n vWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
       sh.fragmentShader = [
         'uniform sampler2D dustMap; uniform sampler2D glitMap; uniform sampler2D noiseTex;',
-        'uniform float uTime; uniform float uDustSize; uniform float uHint; varying vec3 vWPos;'
+        'uniform float uTime; uniform float uDustSize; uniform float uHint; uniform float uClean; uniform vec3 uTint; varying vec3 vWPos;'
       ].join('\n') + '\n' + sh.fragmentShader
         .replace('#include <map_fragment>', [
           'vec2 dUv = vWPos.xz / uDustSize + 0.5;',
@@ -242,6 +274,7 @@
           'vec3 cleanCol = vec3(0.47, 0.48, 0.51) * (0.84 + 0.32 * nzC.b) * (0.88 + 0.24 * nzB.g) * (0.88 + 0.24 * nzA.r);',
           'vec3 dustCol = vec3(0.050, 0.043, 0.037) * (0.90 + 0.20 * nzC.r) * (0.92 + 0.16 * nzB.b) * (0.80 + 0.40 * nzA.g);',
           'vec3 glitCol = vec3(0.050, 0.050, 0.13) * (0.7 + 0.6 * nzC.r);',
+          'dustCol *= uTint;',
           'dustCol = mix(dustCol, glitCol, lcGlit);',
           // dünner Staubschleier am Rand geputzter Flächen
           'float lcVeil = smoothstep(0.0, 0.30, dRaw) * (1.0 - lcDust) * 0.35;',
@@ -267,7 +300,7 @@
           'totalEmissiveRadiance += vec3(0.012, 0.02, 0.05) * lcGlit * lcDust;',
           'totalEmissiveRadiance += vec3(1.0, 0.98, 0.95) * step(0.972, lcH) * lcTw * lcNear * (1.0 - lcDust) * 1.3;',
           // Staub-Scanner: zeigt die letzten Reste, wenn fast alles sauber ist
-          'totalEmissiveRadiance += vec3(1.0, 0.42, 0.10) * lcDust * uHint * (0.55 + 0.45 * sin(uTime * 4.0)) * step(length(vWPos.xz), 74.0);'
+          'totalEmissiveRadiance += vec3(1.0, 0.42, 0.10) * lcDust * uHint * (0.55 + 0.45 * sin(uTime * 4.0)) * step(length(vWPos.xz), uClean);'
         ].join('\n'));
     };
     const mesh = new THREE.Mesh(geo, mat);
@@ -415,44 +448,77 @@
   }
 
   W.boulders = [];
+  const ROCK_MAX = 110;
+  let rockMeshes = [];
   function buildRocks(scene) {
-    const rnd = U.rng(99123);
     const mat = new THREE.MeshStandardMaterial({ color: 0x241f1b, roughness: 0.95, metalness: 0, normalMap: W.normalTex, normalScale: new THREE.Vector2(0.8, 0.8) });
     mat.envMapIntensity = 0;
-    const geos = [rockGeometry(1), rockGeometry(2), rockGeometry(3)];
+    W.rockMat = mat;
+    [rockGeometry(1), rockGeometry(2), rockGeometry(3)].forEach(g => {
+      const im = new THREE.InstancedMesh(g, mat, ROCK_MAX);
+      im.castShadow = true; im.receiveShadow = true; im.frustumCulled = false;
+      scene.add(im); rockMeshes.push(im);
+    });
+    fillRocks();
+  }
+  // Felsen (neu) verteilen – auch beim Wechsel des Sektors
+  function fillRocks() {
+    const rnd = U.rng(99123 + W.sec * 7);
     const lists = [[], [], []];
+    W.boulders.length = 0;
     const tryPlace = (minS, maxS, big) => {
       for (let t = 0; t < 40; t++) {
         const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * (W.LIMIT + 10);
         const x = Math.cos(a) * r, z = Math.sin(a) * r;
-        if (Math.hypot(x, z) < (big ? 30 : 15)) continue;
-        if (Math.hypot(x - 22, z + 8) < 9) continue;
-        if (furrowInfo(x, z).d < (big ? 9 : 4.5)) continue;
+        if (W.sec === 1) {
+          if (Math.hypot(x, z) < (big ? 30 : 15)) continue;
+          if (Math.hypot(x - 22, z + 8) < 9) continue;
+          if (Math.hypot(x - 20, z - 11.5) < 8) continue;
+          if (furrowInfo(x, z).d < (big ? 9 : 4.5)) continue;
+        } else {
+          if (Math.hypot(x, z) < 40) continue;
+          if (Math.hypot(x + 8, z - 100) < (big ? 30 : 20)) continue;
+        }
         if (big && W.craters.some(c => Math.hypot(c.x - x, c.z - z) < c.R * 1.4)) continue;
         const s = minS + Math.pow(rnd(), 2.0) * (maxS - minS);
         return { x, z, s, rot: rnd() * 6.28, tilt: (rnd() - 0.5) * 0.5, k: Math.floor(rnd() * 3) };
       }
       return null;
     };
-    for (let i = 0; i < 170; i++) { const p = tryPlace(0.12, 0.75, false); if (p) lists[p.k].push(p); }
-    for (let i = 0; i < 9; i++) {
+    const nSmall = W.sec === 1 ? 170 : 260, nBig = W.sec === 1 ? 9 : 16;
+    for (let i = 0; i < nSmall; i++) { const p = tryPlace(0.12, 0.75, false); if (p && lists[p.k].length < ROCK_MAX) lists[p.k].push(p); }
+    for (let i = 0; i < nBig; i++) {
       const p = tryPlace(1.3, 2.6, true);
-      if (p) { lists[p.k].push(p); W.boulders.push({ x: p.x, z: p.z, r: p.s * 0.95 }); }
+      if (p && lists[p.k].length < ROCK_MAX) { lists[p.k].push(p); W.boulders.push({ x: p.x, z: p.z, r: p.s * 0.95 }); }
     }
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), sc = new THREE.Vector3(), ps = new THREE.Vector3();
     lists.forEach((list, k) => {
-      const im = new THREE.InstancedMesh(geos[k], mat, list.length);
+      const im = rockMeshes[k];
       list.forEach((p, i) => {
         e.set(p.tilt, p.rot, p.tilt * 0.6); q.setFromEuler(e);
         sc.set(p.s, p.s, p.s); ps.set(p.x, W.heightAt(p.x, p.z) + p.s * 0.22, p.z);
         m.compose(ps, q, sc); im.setMatrixAt(i, m);
       });
-      im.castShadow = true; im.receiveShadow = true; im.frustumCulled = false;
-      scene.add(im);
+      im.count = list.length; im.instanceMatrix.needsUpdate = true;
     });
   }
 
-  // ---------- Aufbau ----------
+  // Schatten der Sonne auf den ganzen Krater einstellen
+  function fitShadow() {
+    const sc = W.sun.shadow.camera, e = W.RIM + 16;
+    sc.left = -e; sc.right = e; sc.top = e; sc.bottom = -e; sc.near = 150; sc.far = 760;
+    sc.updateProjectionMatrix();
+  }
+
+  // Nach W.setSector (und nachdem die ebenen Flächen gesetzt sind): Gelände, Felsen, Schatten, Farben neu
+  W.rebuild = function () {
+    fillTerrain(W.terrain.geometry); fillRocks(); fitShadow();
+    const u = W.terrainUniforms;
+    u.uDustSize.value = W.DUST_SIZE; u.uClean.value = W.CLEAN; u.uTint.value.set(W.cfg.tint[0], W.cfg.tint[1], W.cfg.tint[2]);
+    W.rockMat.color.setRGB(0.0185 * W.cfg.tint[0], 0.0137 * W.cfg.tint[1], 0.0109 * W.cfg.tint[2]);
+  };
+
+  // ---------- Aufbau ----------  // ---------- Aufbau ----------
   W.build = function (scene, dustTex, glitTex) {
     W.terrain = buildTerrain(dustTex, glitTex);
     scene.add(W.terrain);
@@ -482,15 +548,13 @@
 
     // Sonne: hartes Licht, lange Schatten
     const sun = new THREE.DirectionalLight(0xfff3e2, 2.9);
-    sun.position.copy(W.SUN_DIR).multiplyScalar(320);
+    sun.position.copy(W.SUN_DIR).multiplyScalar(440);
     sun.target.position.set(0, 0, 0);
     sun.castShadow = true;
     sun.shadow.mapSize.set(4096, 4096);
-    const sc = sun.shadow.camera;
-    sc.left = -112; sc.right = 112; sc.top = 112; sc.bottom = -112; sc.near = 120; sc.far = 520;
     sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.16; sun.shadow.radius = 1.6;
     scene.add(sun); scene.add(sun.target);
-    W.sun = sun;
+    W.sun = sun; fitShadow();
     // Aufhellung: Erdschein von oben, Rückstrahlung vom Boden
     W.hemi = new THREE.HemisphereLight(0x7f95b8, 0x6b5d50, 0.85);
     scene.add(W.hemi);

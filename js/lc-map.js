@@ -5,24 +5,22 @@
 (function (LC) {
   const U = LC.U, W = LC.World, D = LC.Dust, B = LC.Base;
   const M = { open: false };
-  const N = 256, SIZE = W.DUST_SIZE, CLEAN_R = 74;
+  const N = 256;
+  let SIZE = W.DUST_SIZE, CLEAN_R = W.CLEAN;      // ändern sich mit dem Sektor (M.reconfigure)
+  M.home = { x: 0, z: 0 };                          // wohin der gelbe Pfeil der Minimap zeigt
   const MINI = 176, VIEW = 34;         // Größe der Minimap in Pixeln, sichtbarer Radius in Metern
   let img, ictx, idata, shade, mini, mctx, big, bctx, dpr = 1, buildT = 0, bigSize = 600;
   // Ansicht der großen Karte: Mitte (Welt), Pixel pro Meter; Markierungen
   let vx = 0, vz = 0, vs = 3, minS = 2, drag = null;
   M.marks = []; M.MAX_MARKS = 10; M.onMarks = null;
+  const lim = () => W.RIM + 14;
 
   M.init = function () {
     img = document.createElement('canvas'); img.width = img.height = N;
     ictx = img.getContext('2d'); idata = ictx.createImageData(N, N);
     // Schattierung des Geländes (einmal berechnen): Krater und Hänge werden sichtbar
     shade = new Float32Array(N * N);
-    const c = SIZE / N, sx = W.SUN_DIR.x, sz = W.SUN_DIR.z;
-    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
-      const x = (i + 0.5) * c - SIZE / 2, z = (j + 0.5) * c - SIZE / 2;
-      const dx = W.heightAt(x + 0.6, z) - W.heightAt(x - 0.6, z), dz = W.heightAt(x, z + 0.6) - W.heightAt(x, z - 0.6);
-      shade[j * N + i] = U.clamp(1 - (dx * sx + dz * sz) * 1.5, 0.45, 1.5);
-    }
+    M.reconfigure();
     dpr = Math.min(window.devicePixelRatio || 1, 2);
     mini = document.getElementById('mini'); mini.width = mini.height = Math.round(MINI * dpr); mctx = mini.getContext('2d');
     big = document.getElementById('bigmap-c'); bctx = big.getContext('2d');
@@ -31,7 +29,7 @@
     window.addEventListener('mousemove', e => {
       if (!drag || !M.open) return;
       const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY; drag.moved += Math.abs(dx) + Math.abs(dy);
-      vx = U.clamp(vx - dx / vs, -110, 110); vz = U.clamp(vz - dy / vs, -110, 110);
+      vx = U.clamp(vx - dx / vs, -lim(), lim()); vz = U.clamp(vz - dy / vs, -lim(), lim());
     });
     window.addEventListener('mouseup', e => {
       if (!drag || !M.open) { drag = null; return; }
@@ -52,15 +50,29 @@
       e.preventDefault();
       const w = toWorld(e), f = e.deltaY < 0 ? 1.2 : 1 / 1.2, ns = U.clamp(vs * f, minS, 22);
       // um den Mauszeiger herum zoomen
-      vx = U.clamp(w.x - (w.x - vx) * vs / ns, -110, 110); vz = U.clamp(w.z - (w.z - vz) * vs / ns, -110, 110); vs = ns;
+      vx = U.clamp(w.x - (w.x - vx) * vs / ns, -lim(), lim()); vz = U.clamp(w.z - (w.z - vz) * vs / ns, -lim(), lim()); vs = ns;
     }, { passive: false });
     big.addEventListener('contextmenu', e => e.preventDefault());
     M.rebuild();
   };
 
+  // Schattierung des Geländes für den aktiven Sektor berechnen
+  M.reconfigure = function () {
+    SIZE = W.DUST_SIZE; CLEAN_R = W.CLEAN;
+    if (!shade) return;
+    const c = SIZE / N, sx = W.SUN_DIR.x, sz = W.SUN_DIR.z;
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const x = (i + 0.5) * c - SIZE / 2, z = (j + 0.5) * c - SIZE / 2;
+      const dx = W.heightAt(x + 0.6, z) - W.heightAt(x - 0.6, z), dz = W.heightAt(x, z + 0.6) - W.heightAt(x, z - 0.6);
+      shade[j * N + i] = U.clamp(1 - (dx * sx + dz * sz) * 1.5, 0.45, 1.5);
+    }
+    if (ictx) M.rebuild();
+  };
+
   // Kartenbild aus der Staubkarte neu zeichnen
   M.rebuild = function () {
     const d = idata.data, src = D.data, gl = D.glit, f = D.N / N, c = SIZE / N;
+    const tintR = Math.min(1.5, W.cfg.tint[0]), tintG = W.cfg.tint[1], tintB = W.cfg.tint[2];
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
       let sum = 0;
       const j0 = j * f, i0 = i * f;
@@ -68,7 +80,7 @@
       const dust = sum / (f * f / 4) / 255, g = gl[(j0 + 2) * D.N + i0 + 2] / 255;
       const x = (i + 0.5) * c - SIZE / 2, z = (j + 0.5) * c - SIZE / 2, r = Math.sqrt(x * x + z * z);
       const sh = shade[j * N + i];
-      let cr = 64, cg = 55, cb = 48;                                   // Staub
+      let cr = 64 * tintR, cg = 55 * tintG, cb = 48 * tintB;           // Staub
       if (g > 0.3) { cr = U.lerp(cr, 96, g); cg = U.lerp(cg, 88, g); cb = U.lerp(cb, 205, g); }  // Glitzerstaub
       cr = U.lerp(214, cr, dust); cg = U.lerp(224, cg, dust); cb = U.lerp(232, cb, dust);        // geputzt = hell
       const edge = r > CLEAN_R ? 0.55 : 1;
@@ -93,6 +105,7 @@
       }
       ctx.restore();
     };
+    if (W.sec === 1) {
     // Wrack als Strich
     const f = W.furrow, cx = f.b.x - f.dir.x * 3.2, cz = f.b.z - f.dir.z * 3.2;
     ctx.strokeStyle = '#f2f2f2'; ctx.lineWidth = Math.max(3, 3.6 * s); ctx.lineCap = 'round';
@@ -104,11 +117,14 @@
     if (labels) dot(B.pad.x, B.pad.z, '#e8b43a', 3, 'Landeplatz');
     dot(B.shop.x, B.shop.z, '#6fe6ff', labels ? 6 : 4.5, 'Werkstatt', 'sq');
     dot(B.silo.x, B.silo.z, '#ffbf5a', labels ? 7 : 5.5, 'Staublager');
+    }
+    const tp = B.portals[W.sec];
+    dot(tp.x, tp.z, '#c8a0ff', labels ? 6 : 4.5, W.sec === 1 ? 'Tunnel nach Sektor 2' : 'Tunnel zur Basis', 'sq');
     const BGm = LC.Buggy, SKm = LC.Sacks;
     if (BGm) {
-      ctx.strokeStyle = '#e0aa22'; ctx.lineWidth = 2; ctx.save(); ctx.translate(BGm.station.x * s, BGm.station.z * s); ctx.rotate(-0.5); ctx.strokeRect(-2.7 * s, -4 * s, 5.4 * s, 8 * s); ctx.restore();
-      if (labels) dot(BGm.station.x, BGm.station.z, '#e0aa22', 3, 'Fahrzeug-Entladung');
-      if (BGm.owned) dot(BGm.pos.x, BGm.pos.z, '#59f08f', labels ? 6 : 4.5, 'Buggy', 'sq');
+      ctx.strokeStyle = '#e0aa22'; ctx.lineWidth = 2; ctx.save(); ctx.translate(BGm.station.x * s, BGm.station.z * s); ctx.rotate(-BGm.station.rot); ctx.strokeRect(-2.7 * s, -4 * s, 5.4 * s, 8 * s); ctx.restore();
+      if (labels) dot(BGm.station.x, BGm.station.z, '#e0aa22', 3, W.sec === 1 ? 'Fahrzeug-Entladung' : 'Außenposten: Staub-Annahme');
+      if (BGm.here()) dot(BGm.pos.x, BGm.pos.z, '#59f08f', labels ? 6 : 4.5, 'Buggy', 'sq');
     }
     if (SKm) SKm.list.forEach(k => dot(k.x, k.z, '#d8b98a', labels ? 3.5 : 2.6));
     if (labels) W.glitterCraters.forEach(c => dot(c.x, c.z + c.R * 0.95, 'rgba(0,0,0,0)', 0, 'Glitzerstaub'));
@@ -134,7 +150,7 @@
       bigSize = Math.round(Math.min(window.innerHeight * 0.66, window.innerWidth * 0.8, 780));
       big.style.width = big.style.height = bigSize + 'px';
       big.width = big.height = Math.round(bigSize * dpr);
-      minS = bigSize / 215; vs = bigSize / 172; vx = 0; vz = 0; drag = null;
+      minS = bigSize / ((W.RIM + 12) * 2.1); vs = bigSize / ((W.RIM - 10) * 2); vx = 0; vz = 0; drag = null;
       M.rebuild(); buildT = 0; M.setArmed(false);
     }
   };
@@ -172,7 +188,7 @@
     gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,.55)');
     ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(c, c, c, 0, Math.PI * 2); ctx.fill();
     // Staublager außerhalb? Pfeil am Rand
-    const dx = B.silo.x - px, dz = B.silo.z - pz, dist = Math.hypot(dx, dz);
+    const dx = M.home.x - px, dz = M.home.z - pz, dist = Math.hypot(dx, dz);
     if (dist > VIEW * 0.93) {
       const a = Math.atan2(dz, dx) + yaw;
       ctx.save(); ctx.translate(c + Math.cos(a) * (c - 12), c + Math.sin(a) * (c - 12)); ctx.rotate(a + Math.PI / 2);
@@ -192,8 +208,8 @@
     ctx.save();
     ctx.translate(S2 / 2 - vx * vs, S2 / 2 - vz * vs);
     // Kraterrand und Umland (noch nicht erschlossen)
-    ctx.fillStyle = '#231e1a'; ctx.beginPath(); ctx.arc(0, 0, 104 * vs, 0, Math.PI * 2); ctx.fill();
-    ctx.save(); ctx.beginPath(); ctx.arc(0, 0, 80 * vs, 0, Math.PI * 2); ctx.clip();
+    ctx.fillStyle = '#231e1a'; ctx.beginPath(); ctx.arc(0, 0, (W.RIM + 8) * vs, 0, Math.PI * 2); ctx.fill();
+    ctx.save(); ctx.beginPath(); ctx.arc(0, 0, SIZE / 2 * vs, 0, Math.PI * 2); ctx.clip();
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(img, -SIZE / 2 * vs, -SIZE / 2 * vs, SIZE * vs, SIZE * vs);
     ctx.restore();

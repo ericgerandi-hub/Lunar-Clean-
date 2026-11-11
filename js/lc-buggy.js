@@ -8,11 +8,15 @@
   const BG = { owned: false, driving: false, heading: 0, speed: 0, CAP: 1500, lookYaw: 0, lookPitch: -0.08, suck: 0 };
   BG.pos = new THREE.Vector3();
   BG.load = { n: 0, g: 0 };
-  BG.station = { x: 20, z: 11.5, r: 3.2 };
+  // Entladestationen je Sektor; BG.station ist die im aktiven Sektor
+  BG.stations = { 1: { x: 20, z: 11.5, r: 3.2, rot: 0.5 }, 2: { x: -18, z: 96, r: 3.2, rot: -0.35 } };
+  BG.station = BG.stations[1];
+  BG.sec = 1;                  // in welchem Sektor der Buggy steht
+  BG.headR = 2.2;              // Radius der Saugfläche
   BG.park = { x: 14.5, z: 17, heading: 2.5 };
   BG.HOSE_RANGE = 16;
-  const HEAD_DIST = 2.35, HEAD_R = 2.2, RADIUS = 1.5;
-  let scene, car, wheels = [], fill, shadow, headL, hose, hoseMat, stationGrate, pitch = 0, roll = 0;
+  const HEAD_DIST = 2.35, RADIUS = 1.5;
+  let scene, car, wheels = [], fill, shadow, headL, hose, hoseMat, pitch = 0, roll = 0;
   const tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3(), q1 = new THREE.Quaternion(), e1 = new THREE.Euler(0, 0, 0, 'YXZ');
   BG.headWorld = new THREE.Vector3(); BG.hopperWorld = new THREE.Vector3();
 
@@ -95,9 +99,11 @@
     hose = new THREE.Mesh(new THREE.BufferGeometry(), hoseMat); hose.visible = false; hose.frustumCulled = false; scene.add(hose);
   }
 
-  function buildStation() {
-    const st = BG.station, y = W.heightAt(st.x, st.z);
-    const g = new THREE.Group(); g.position.set(st.x, y, st.z); g.rotation.y = 0.5;
+  // parent = Gruppe des Sektors; pipeTo = {x, z} oder null
+  BG.buildStation = function (parent, st, pipeTo, title) {
+    const y = W.heightAt(st.x, st.z);
+    const g = new THREE.Group(); g.position.set(st.x, y, st.z); g.rotation.y = st.rot;
+    let stationGrate;
     const c = document.createElement('canvas'); c.width = 256; c.height = 384;
     const x = c.getContext('2d');
     x.fillStyle = '#24262a'; x.fillRect(0, 0, 256, 384);
@@ -113,6 +119,7 @@
     slab.position.y = -0.5; slab.receiveShadow = true; slab.castShadow = true; g.add(slab);
     stationGrate = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 5.6), new THREE.MeshBasicMaterial({ color: 0xffb040, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
     stationGrate.rotation.x = -Math.PI / 2; stationGrate.position.y = 0.115; g.add(stationGrate);
+    st.grate = stationGrate;
     const mSteel = new THREE.MeshStandardMaterial({ color: 0x80868c, roughness: 0.36, metalness: 0.8 });
     [[-2.9, -4.2], [2.9, -4.2], [-2.9, 4.2], [2.9, 4.2]].forEach((p, i) => {
       const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 1.3, 8), mSteel); post.position.set(p[0], 0.65, p[1]); post.castShadow = true; g.add(post);
@@ -125,7 +132,7 @@
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.0), new THREE.MeshStandardMaterial({
       color: 0, emissive: 0xffffff, emissiveIntensity: 1.0, side: THREE.DoubleSide,
       emissiveMap: U.textTexture([
-        { text: 'FAHRZEUG-ENTLADUNG', size: 44, color: '#ffc45a', y: 74 },
+        { text: title || 'FAHRZEUG-ENTLADUNG', size: 44, color: '#ffc45a', y: 74 },
         { text: 'Drauffahren und E drücken', size: 30, color: '#e8dcc4', y: 140, bold: false }
       ], { w: 560, h: 216, bg: '#140d04', border: '#ffb040' })
     }));
@@ -133,14 +140,19 @@
     sign.position.set(-3.38, 2.75, 0); sign.rotation.y = Math.PI / 2; g.add(sign);
     const sign2 = sign.clone(); sign2.position.x = -3.42; sign2.rotation.y = -Math.PI / 2; g.add(sign2);
     // Rohr zum Staublager
-    const a = new THREE.Vector3(st.x - 2.2, 0, st.z - 2.8), b = new THREE.Vector3(B.silo.x + 1.2, 0, B.silo.z + 0.6);
-    const pts = []; for (let i = 0; i <= 6; i++) { const p = a.clone().lerp(b, i / 6); p.y = W.heightAt(p.x, p.z) + 0.16; pts.push(p); }
-    const pipe = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 30, 0.16, 8), mSteel); pipe.castShadow = true; scene.add(pipe);
-    scene.add(g);
-    B.colliders.push({ x: st.x - 3.4 * Math.cos(0.5), z: st.z + 3.4 * Math.sin(0.5), r: 0.3, h: 3 });
-  }
+    if (pipeTo) {
+      const a = new THREE.Vector3(st.x - 2.2, 0, st.z - 2.8), b = new THREE.Vector3(pipeTo.x, 0, pipeTo.z);
+      const pts = []; for (let i = 0; i <= 6; i++) { const p = a.clone().lerp(b, i / 6); p.y = W.heightAt(p.x, p.z) + 0.16; pts.push(p); }
+      const pipe = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 30, 0.16, 8), mSteel); pipe.castShadow = true; parent.add(pipe);
+    }
+    parent.add(g);
+    B.colliders.push({ x: st.x - 3.4 * Math.cos(st.rot), z: st.z + 3.4 * Math.sin(st.rot), r: 0.3, h: 3 });
+  };
 
-  BG.init = function (sc) { scene = sc; build(); buildStation(); };
+  BG.init = function (sc) { scene = sc; build(); BG.buildStation(B.root1, BG.stations[1], { x: B.silo.x + 1.2, z: B.silo.z + 0.6 }); };
+  // sichtbar nur, wenn man im selben Sektor ist
+  BG.refresh = function () { const v = BG.owned && BG.sec === W.sec; car.visible = shadow.visible = v; if (!v) hose.visible = false; BG.station = BG.stations[W.sec]; };
+  BG.here = () => BG.owned && BG.sec === W.sec;
 
   function settle(dt, snap) {
     const sh = Math.sin(BG.heading), ch = Math.cos(BG.heading);
@@ -159,10 +171,10 @@
 
   BG.place = function (x, z, heading) {
     BG.pos.set(x, B.groundAt(x, z), z); BG.heading = heading; BG.speed = 0; pitch = roll = 0;
-    car.visible = shadow.visible = BG.owned;
+    BG.refresh();
     if (BG.owned) settle(0, true);
   };
-  BG.setOwned = function (on) { BG.owned = on; car.visible = shadow.visible = on; if (!on) { BG.driving = false; hose.visible = false; } };
+  BG.setOwned = function (on) { BG.owned = on; if (!on) { BG.driving = false; BG.sec = 1; } BG.refresh(); };
 
   // inp: {f, s, fire, mdx, mdy, sens}; cb: {onSuck(n, g), spawnStream(from, to, glit)}
   BG.drive = function (dt, inp, cb) {
@@ -189,13 +201,13 @@
     // Saugkopf
     BG.suck += ((inp.fire && BG.room() > 0.01 ? 1 : 0) - BG.suck) * Math.min(1, dt * 6);
     if (BG.suck > 0.1 && BG.room() > 0.01) {
-      const res = D.suck(BG.headWorld.x, BG.headWorld.z, HEAD_R, 5.5 * BG.suck, dt, BG.room());
+      const res = D.suck(BG.headWorld.x, BG.headWorld.z, BG.headR, 5.5 * BG.suck, dt, BG.room());
       const got = res.n + res.g;
       if (got > 0) {
         cb.onSuck(res.n, res.g);
         const n = Math.min(10, Math.ceil(got * 8));
         for (let i = 0; i < n; i++) {
-          const a = Math.random() * 6.283, rr = Math.sqrt(Math.random()) * HEAD_R;
+          const a = Math.random() * 6.283, rr = Math.sqrt(Math.random()) * BG.headR;
           tmp.set(BG.headWorld.x + Math.cos(a) * rr, 0, BG.headWorld.z + Math.sin(a) * rr); tmp.y = W.heightAt(tmp.x, tmp.z) + 0.05;
           cb.spawnStream(tmp, BG.headWorld, Math.random() < res.g / got);
         }
@@ -217,7 +229,8 @@
     fill.material.color.setRGB(0.10, U.lerp(0.085, 0.2, gr), U.lerp(0.07, 0.4, gr));
     headL.intensity = BG.driving ? 0.5 + 2.2 * dark : 0;
     BG.beaconMat.emissiveIntensity = BG.driving ? ((t * 1.4) % 1 < 0.5 ? 3 : 0.2) : 0.2;
-    if (stationGrate) stationGrate.material.opacity += ((BG.unloading ? 0.5 + 0.3 * Math.sin(t * 20) : 0) - stationGrate.material.opacity) * Math.min(1, dt * 8);
+    const gr8 = BG.station.grate;
+    if (gr8) gr8.material.opacity += ((BG.unloading ? 0.5 + 0.3 * Math.sin(t * 20) : 0) - gr8.material.opacity) * Math.min(1, dt * 8);
     if (hoseFrom) {
       // Schlauch: hängt vom Laderaum auf den Boden und läuft zum Spieler
       tmp.set(0.95, 1.5, 1.3).applyMatrix4(car.matrixWorld);
@@ -236,7 +249,7 @@
     const ch = Math.cos(BG.heading), sh = Math.sin(BG.heading);
     return out.set(BG.pos.x - ch * 2.3, 0, BG.pos.z + sh * 2.3);
   };
-  BG.serialize = function () { return [+BG.pos.x.toFixed(2), +BG.pos.z.toFixed(2), +BG.heading.toFixed(3), +BG.load.n.toFixed(1), +BG.load.g.toFixed(1)]; };
+  BG.serialize = function () { return [+BG.pos.x.toFixed(2), +BG.pos.z.toFixed(2), +BG.heading.toFixed(3), +BG.load.n.toFixed(1), +BG.load.g.toFixed(1), BG.sec]; };
 
   LC.Buggy = BG;
 })(window.LC);

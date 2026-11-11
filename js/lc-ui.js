@@ -69,11 +69,11 @@
     while (el.toasts.children.length > 4) el.toasts.removeChild(el.toasts.firstChild);
     setTimeout(() => d.remove(), (l + 0.6) * 1000);
   };
-  UI.way = function (visible, x, y, dist) {
+  UI.way = function (visible, x, y, dist, label) {
     show('way', visible);
     if (!visible) return;
     el.way.style.transform = 'translate(' + x.toFixed(0) + 'px,' + y.toFixed(0) + 'px) translate(-50%,-50%)';
-    setText('way-d', 'BASIS ' + Math.round(dist) + ' m');
+    setText('way-d', (label || 'BASIS') + ' ' + Math.round(dist) + ' m');
   };
   UI.fps = function (v) { setText('fps', v); };
 

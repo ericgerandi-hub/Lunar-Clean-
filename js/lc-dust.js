@@ -5,8 +5,9 @@
 (function (LC) {
   const U = LC.U, W = LC.World;
   const D = {};
-  const N = 1024, SIZE = W.DUST_SIZE, CELL = SIZE / N, CELL_AREA = CELL * CELL;
-  const CLEAN_R = 74;          // bis hierhin kann geputzt werden
+  const N = 1024;
+  // Größe der Karte und Putz-Radius hängen vom Sektor ab (D.configure)
+  let SIZE = W.DUST_SIZE, CELL = SIZE / N, CELL_AREA = CELL * CELL, CLEAN_R = W.CLEAN;
   const FLOOR = 46;            // darunter ist Staub im Bild nicht mehr zu sehen
   D.N = N; D.KG_PER_M2 = 1.0;  // 1 m² voller Staub = 1 kg
 
@@ -18,38 +19,53 @@
 
   const toCell = v => (v / SIZE + 0.5) * N;
 
-  D.init = function () {
-    const d = D.data, g = D.glit;
+  // Auf den aktiven Sektor einstellen: Größe, putzbare Fläche, Glitzerstaub-Maske
+  D.configure = function () {
+    SIZE = W.DUST_SIZE; CELL = SIZE / N; CELL_AREA = CELL * CELL; CLEAN_R = W.CLEAN;
+    const g = D.glit;
     let total = 0;
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
-      const x = (i + 0.5) * CELL - SIZE / 2, z = (j + 0.5) * CELL - SIZE / 2, k = j * N + i;
-      d[k] = 255;
-      if (Math.hypot(x, z) < CLEAN_R) total += 255;
+      const x = (i + 0.5) * CELL - SIZE / 2, z = (j + 0.5) * CELL - SIZE / 2;
+      if (x * x + z * z < CLEAN_R * CLEAN_R) total += 255;
     }
-    // Glitzerstaub in den tiefen Kratern
+    D.total = total;
+    g.fill(0);
     W.glitterCraters.forEach(c => {
-      const R = c.R * 0.82, i0 = Math.floor(toCell(c.x - R)), i1 = Math.ceil(toCell(c.x + R)), j0 = Math.floor(toCell(c.z - R)), j1 = Math.ceil(toCell(c.z + R));
+      const R = c.R * 0.82, i0 = Math.max(0, Math.floor(toCell(c.x - R))), i1 = Math.min(N - 1, Math.ceil(toCell(c.x + R))), j0 = Math.max(0, Math.floor(toCell(c.z - R))), j1 = Math.min(N - 1, Math.ceil(toCell(c.z + R)));
       for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
         const x = (i + 0.5) * CELL - SIZE / 2, z = (j + 0.5) * CELL - SIZE / 2;
         const dd = Math.hypot(x - c.x, z - c.z) / R + (U.fbm(x * 0.5, z * 0.5, 2, 61) - 0.5) * 0.35;
         if (dd < 1) g[j * N + i] = 255 * U.smoothstep(1, 0.8, dd);
       }
     });
-    D.total = total;
-    D.reset();
+    if (D.glitTex) D.glitTex.needsUpdate = true;
+  };
 
+  D.init = function () {
+    const d = D.data, g = D.glit;
+    D.configure();
+    D.reset();
     D.tex = new THREE.DataTexture(d, N, N, THREE.LuminanceFormat);
     D.tex.magFilter = D.tex.minFilter = THREE.LinearFilter; D.tex.generateMipmaps = false; D.tex.needsUpdate = true;
     D.glitTex = new THREE.DataTexture(g, N, N, THREE.LuminanceFormat);
     D.glitTex.magFilter = D.glitTex.minFilter = THREE.LinearFilter; D.glitTex.generateMipmaps = false; D.glitTex.needsUpdate = true;
   };
 
+  // Staubkarten der anderen Sektoren liegen hier, solange man nicht dort ist
+  D.stash = {}; D.pc = {};
+  D.leave = function (n) { D.stash[n] = new Uint8Array(D.data); D.pc[n] = D.percentClean(); };
+  D.enter = function (n) {
+    D.configure();
+    if (D.stash[n]) { D.data.set(D.stash[n]); D.recount(); dirty = true; delete D.stash[n]; }
+    else D.reset();
+  };
+  D.percentOf = function (n) { return n === W.sec ? D.percentClean() : (D.pc[n] || 0); };
+
   // Ausgangszustand: alles staubig, nur die Absturzstelle ist blank gescheuert
   D.reset = function () {
     const d = D.data;
     d.fill(255);
-    const fur = W.furrow;
-    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    if (W.sec === 1) for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
       const x = (i + 0.5) * CELL - SIZE / 2, z = (j + 0.5) * CELL - SIZE / 2;
       if (x > 14 || x < -66 || z > 14 || z < -32) continue;
       const f = W.furrowInfo(x, z);
@@ -151,8 +167,8 @@
   D.flush = function () { if (dirty) { D.tex.needsUpdate = true; dirty = false; } };
 
   // ---------- Speichern: Lauflängen-Kodierung ----------
-  D.serialize = function () {
-    const d = D.data, out = [];
+  D.serialize = function (arr) {
+    const d = arr || D.data, out = [];
     // grob runden, damit der Spielstand klein bleibt
     const qz = x => (x < 20 ? 0 : x > 235 ? 255 : (x & 0xF0) | 8);
     let v = qz(d[0]), run = 1;
@@ -167,18 +183,32 @@
     for (let i = 0; i < out.length; i += CH) s += String.fromCharCode.apply(null, out.slice(i, i + CH));
     return btoa(s);
   };
-  D.deserialize = function (b64) {
+  D.deserialize = function (b64, arr) {
     try {
-      const s = atob(b64), d = D.data; let k = 0;
+      const s = atob(b64), d = arr || D.data; let k = 0;
       for (let i = 0; i + 2 < s.length; i += 3) {
         const v = s.charCodeAt(i), run = (s.charCodeAt(i + 1) << 8) | s.charCodeAt(i + 2);
         if (k + run > d.length) return false;
         d.fill(v, k, k + run); k += run;
       }
       if (k !== d.length) return false;
-      D.recount(); dirty = true;
+      if (!arr) { D.recount(); dirty = true; }
       return true;
     } catch (e) { return false; }
+  };
+
+  // Spielstand: Karte eines Sektors holen bzw. für später ablegen
+  D.serializeSector = function (n) { return n === W.sec ? D.serialize() : D.stash[n] ? D.serialize(D.stash[n]) : null; };
+  D.loadStash = function (n, b64) {
+    const arr = new Uint8Array(N * N);
+    if (!b64 || !D.deserialize(b64, arr)) return false;
+    const c = W.SECTORS[n], cell = c.SIZE / N, r2 = c.CLEAN * c.CLEAN; let tot = 0, cur = 0;
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const x = (i + 0.5) * cell - c.SIZE / 2, z = (j + 0.5) * cell - c.SIZE / 2;
+      if (x * x + z * z < r2) { tot += 255; cur += arr[j * N + i]; }
+    }
+    D.stash[n] = arr; D.pc[n] = tot ? 1 - cur / tot : 0;
+    return true;
   };
 
   LC.Dust = D;

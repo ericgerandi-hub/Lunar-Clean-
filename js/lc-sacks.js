@@ -105,5 +105,20 @@
     });
   };
 
+  // Säcke bleiben in ihrem Sektor liegen
+  SK.stash = {};
+  SK.switchSector = function (from, to) { SK.stash[from] = SK.serialize(); SK.load(SK.stash[to] || []); delete SK.stash[to]; };
+  SK.serializeAll = function (cur) {
+    const out = SK.serialize().map(a => a.concat(cur));
+    Object.keys(SK.stash).forEach(k => SK.stash[k].forEach(a => out.push(a.concat(+k))));
+    return out;
+  };
+  // beim Laden: Säcke des aktiven Sektors hinlegen, die anderen ablegen
+  SK.loadAll = function (arr, cur) {
+    SK.stash = {}; const here = [];
+    (arr || []).forEach(a => { const sec = +a[4] || 1; if (sec === cur) here.push(a); else (SK.stash[sec] = SK.stash[sec] || []).push(a.slice(0, 4)); });
+    SK.load(here);
+  };
+
   LC.Sacks = SK;
 })(window.LC);

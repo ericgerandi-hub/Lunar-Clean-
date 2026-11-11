@@ -47,6 +47,9 @@ Spielplan (alle Entscheidungen des Nutzers): https://claude.ai/artifact/FeVhH9CZ
   C in der Luft mit Jetpack = sinken. Neue Ziele am Anfang verschieben `G.stage`: beim Laden über `gv` anpassen.
 - Jedes freigeschaltete Teil bekommt eine kleine Anleitung: `help: [...]` am Eintrag in `UP` (Fenster nach dem Kauf, später über „Wie funktioniert das?“).
 - Sektor gilt erst ab `DONE_AT` (Anzeige 100 %) als fertig; bis dahin leuchten Reste orange (`uHint`). Unter Bauten liegt kein Staub (`D.clearArea`), der Boden ist dort eben (`W.addFlat`).
-- Nächster großer Schritt, den der Nutzer bald will: Mehrspieler.
+- Sektoren: `W.SECTORS` (lc-world.js). `setupSector(n)` in lc-main.js baut Gelände, Felsen, Bauten und Karte um; `enterSector(n)` nimmt Staubkarte
+  (`D.leave/enter`, Zwischenlager `D.stash`) und Säcke mit. Bauten von Sektor 1 hängen an `B.root1`, der Außenposten an `B.root2`.
+  Hindernisse/Benutzen-Punkte je Sektor: `B.cols`, `B.pts`. Tunnel: `B.portals`, Fahrt: `travel()`. Der Buggy merkt sich seinen Sektor (`BG.sec`).
+- Reihenfolge, die der Nutzer will: Mehrspieler, Automatisierung (Putzroboter, Luftkanäle, Staubpresse), Rakete als echtes Ziel, eigene Gebäude an der Basis bauen.
 - Noch nicht gebaut (siehe Spielplan): Gleiter, Raumschiff, Putzroboter, Luftkanäle, Staubpresse, Drohnen,
   Händler mit schwankenden Preisen, Hangar/Garage/Solarpark, Rakete als Spielziel, Handy-Steuerung.
