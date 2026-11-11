@@ -6,7 +6,7 @@
   const UI = {};
   const $ = id => document.getElementById(id);
   const el = {};
-  ['hud', 'money', 'money-v', 'goal', 'goal-t', 'sec-v', 'sec-b', 'hud-bl', 'tank-v', 'tank-n', 'tank-g', 'tank-s', 'tank-m', 'jet', 'jet-b', 'jet-v',
+  ['hud', 'money', 'money-v', 'goal', 'goal-t', 'sec-v', 'sec-b', 'hud-bl', 'tank-v', 'tank-l', 'tools', 'tank-n', 'tank-g', 'tank-s', 'tank-m', 'jet', 'jet-b', 'jet-v',
     'cross', 'prompt', 'warn', 'toasts', 'way', 'way-d', 'keys', 'fps', 'menu', 'pause', 'shop', 'cards', 'shop-money', 'stats', 'loading', 'ver',
     'btn-play', 'btn-new', 'btn-resume', 'btn-tomenu', 'btn-wipe', 'btn-shopclose', 'btn-full', 'set-full', 'set-sens', 'set-vol', 'set-music', 'set-gfx'].forEach(id => el[id] = $(id));
   UI.el = el;
@@ -36,13 +36,23 @@
     setText('sec-v', (frac >= 0.9995 ? '100' : nf1.format(Math.min(99.9, frac * 100))) + ' % sauber');
     setW('sec-b', frac);
   };
-  UI.tank = function (n, g, cap, worth) {
+  UI.tank = function (label, n, g, cap, worth, status) {
     const tot = n + g, full = tot >= cap - 0.001;
+    setText('tank-l', label);
     setText('tank-v', (tot >= 100 ? nf0.format(tot) : nf1.format(tot)) + ' / ' + nf0.format(cap) + ' kg');
     setW('tank-n', n / cap); setW('tank-g', g / cap);
     setText('tank-m', nf0.format(Math.round(worth)) + ' ¢');
-    setText('tank-s', full ? 'VOLL – ab zum Staublager' : g > 0.05 ? 'mit ' + nf1.format(g) + ' kg Glitzerstaub' : tot < 0.05 ? 'Leer' : 'Staub an Bord');
+    setText('tank-s', status || (full ? 'VOLL' : g > 0.05 ? 'mit ' + nf1.format(g) + ' kg Glitzerstaub' : tot < 0.05 ? 'Leer' : 'Staub an Bord'));
     if (last.full !== full) { last.full = full; el['hud-bl'].classList.toggle('full', full); }
+  };
+  UI.tools = function (list) {
+    const own = list.filter(t => t.has);
+    const key = own.map(t => t.key + t.name + (t.on ? '*' : '')).join('|');
+    if (last.tools === key) return;
+    last.tools = key;
+    el.tools.classList.toggle('hidden', own.length < 2);
+    el.tools.innerHTML = '';
+    own.forEach(t => { const d = document.createElement('div'); d.className = 'tool' + (t.on ? ' on' : ''); const k = document.createElement('b'); k.textContent = t.key; d.appendChild(k); d.appendChild(document.createTextNode(t.name)); el.tools.appendChild(d); });
   };
   UI.jet = function (visible, frac) {
     show('jet', visible);

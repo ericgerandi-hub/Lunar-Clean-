@@ -64,6 +64,19 @@
     vacLP.frequency.setTargetAtTime(250 + intensity * 500, t, 0.08);
   };
 
+  let bugOsc, bugG, bugLP;
+  A.setBuggy = function (on, speed) {
+    if (!A.ctx) return;
+    const c = A.ctx, t = c.currentTime;
+    if (!bugOsc) {
+      bugOsc = c.createOscillator(); bugOsc.type = 'sawtooth'; bugLP = c.createBiquadFilter(); bugLP.type = 'lowpass'; bugLP.frequency.value = 300;
+      bugG = c.createGain(); bugG.gain.value = 0; bugOsc.connect(bugLP); bugLP.connect(bugG); bugG.connect(master); bugOsc.start();
+    }
+    bugG.gain.setTargetAtTime(on ? 0.05 + Math.min(0.06, speed * 0.006) : 0, t, 0.08);
+    bugOsc.frequency.setTargetAtTime(38 + speed * 9, t, 0.08);
+    bugLP.frequency.setTargetAtTime(220 + speed * 60, t, 0.1);
+  };
+
   A.setJet = function (v) {
     if (!A.ctx) return;
     const t = A.ctx.currentTime;
@@ -92,6 +105,15 @@
       case 'buy': [392, 494, 587, 784].forEach((f, i) => tone(f, 0.5, 'sine', 0.10, i * 0.06)); tone(196, 0.7, 'sawtooth', 0.04); break;
       case 'deny': tone(180, 0.16, 'square', 0.05); tone(140, 0.22, 'square', 0.05, 0.12); break;
       case 'full': tone(660, 0.12, 'square', 0.045); tone(660, 0.12, 'square', 0.045, 0.2); break;
+      case 'scoop': {
+        const c = A.ctx, t = c.currentTime, src = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+        src.buffer = noiseBuf; f.type = 'bandpass'; f.frequency.setValueAtTime(900, t); f.frequency.exponentialRampToValueAtTime(260, t + 0.2); f.Q.value = 0.9;
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(p ? 0.16 : 0.06, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
+        src.connect(f); f.connect(g); g.connect(master); src.start(t, Math.random()); src.stop(t + 0.3);
+        break;
+      }
+      case 'thump': tone(110, 0.22, 'sine', 0.2, 0, 45); break;
+      case 'engine': break;
       case 'click': tone(1200, 0.04, 'square', 0.03); break;
       case 'glit': tone(1800 + Math.random() * 1400, 0.25, 'sine', 0.035); break;
       case 'spark': tone(2400 + Math.random() * 900, 0.05, 'sawtooth', 0.03, 0, 300); break;

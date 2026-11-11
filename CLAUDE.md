@@ -12,7 +12,9 @@ Spielplan (alle Entscheidungen des Nutzers): https://claude.ai/artifact/FeVhH9CZ
   - `lc-dust.js` Staubkarte 1024² über 160 m (`suck`, `percentClean`, Speichern als Lauflängen-Kodierung)
   - `lc-base.js` Wrack, Staublager, Werkstatt, Landeplatz, Lampen; `colliders`, `points` (Benutzen mit E)
   - `lc-player.js` Laufen, Springen, Jetpack, Kollision
-  - `lc-vacuum.js` Sauger-Modell in der Hand (eigene Szene), Saugen, Partikel, Zielring
+  - `lc-vacuum.js` Handwerkzeuge (Löffel, Schaufel, Sauger, XL) als Modelle in eigener Szene, Schaufeln/Saugen, Partikel, Zielring
+  - `lc-sacks.js` Staubsäcke (Taste G füllen und werfen, E aufheben, max. 2 tragen)
+  - `lc-buggy.js` Mondbuggy (fahren, Saugkopf, 1.500 kg Laderaum, Schlauch für den Handsauger) und Fahrzeug-Entladestation
   - `lc-post.js` HDR, Bloom, Filmkurve (fällt ohne Float-Texturen auf direktes Zeichnen zurück)
   - `lc-audio.js` alle Töne und Musik live erzeugt (keine Audiodateien)
   - `lc-map.js` Minimap (dreht mit) und große Karte (Taste M), gezeichnet aus der Staubkarte
@@ -35,5 +37,8 @@ Spielplan (alle Entscheidungen des Nutzers): https://claude.ai/artifact/FeVhH9CZ
 - Gelände ändern = `heightAt` ändern; Gitter, Spieler, Zielring und Felsen lesen alle daraus.
 - Mehrspieler ist geplant (2–3 Spieler, PeerJS wie bei Orbitalbrigade `ob-net.js`/`ob-mp.js`, Host rechnet die Welt).
   Deshalb: Spielzustand in `LC.G` und Staubänderungen nur über `LC.Dust.suck` halten.
-- Noch nicht gebaut (siehe Spielplan): Buggy, Gleiter, Raumschiff, Putzroboter, Luftkanäle, Staubpresse, Drohnen,
+- Wunsch des Nutzers: viele verschiedene Putz-Werkzeuge, die man nacheinander kauft (nicht nur einen Sauger upgraden);
+  große Fahrzeuge kommen spät und haben eine eigene Entladestation. Werkzeug-Daten: `TOOLS` und `UP` in `lc-main.js`.
+- Die Schattenkarte der Sonne steht still (`shadowMap.autoUpdate = false`); bewegte Dinge brauchen `shadowFrames = 2` oder einen eigenen weichen Schatten (Buggy).
+- Noch nicht gebaut (siehe Spielplan): Gleiter, Raumschiff, Putzroboter, Luftkanäle, Staubpresse, Drohnen,
   Händler mit schwankenden Preisen, Hangar/Garage/Solarpark, Rakete als Spielziel, Handy-Steuerung.

@@ -3,35 +3,65 @@
    Lunar Clean – Hauptprogramm: Spielstand, Regeln, Schleife
    ========================================================= */
 (function (LC) {
-  const U = LC.U, W = LC.World, D = LC.Dust, B = LC.Base, PL = LC.Player, V = LC.Vacuum, P = LC.Post, A = LC.Audio, UI = LC.UI;
-  const VERSION = '0.2.0';                 // nach jeder Änderung hochzählen
+  const U = LC.U, W = LC.World, D = LC.Dust, B = LC.Base, PL = LC.Player, V = LC.Vacuum, P = LC.Post, A = LC.Audio, UI = LC.UI, SK = LC.Sacks, BG = LC.Buggy;
+  const VERSION = '0.3.0';                 // nach jeder Änderung hochzählen
   const SAVE_KEY = 'lunarclean_save_v1', SET_KEY = 'lunarclean_settings_v1';
   const PRICE_N = 2, PRICE_G = 15;         // ¢ pro kg: normaler Staub / Glitzerstaub
   const TEST = /[?&]test/.test(location.search);
 
   // ---------- Upgrades ----------
   const UP = {
-    repair: { name: 'Sauger reparieren', max: 1, costs: [60],
+    shovel: { name: 'Schaufel', max: 1, costs: [30],
+      desc: 'Schluss mit dem Löffel: Eine Schaufel schafft pro Schwung dreimal so viel.' },
+    vac: { name: 'Handsauger (gebraucht)', max: 1, costs: [120], needs: 'shovel',
+      desc: 'Saugt, solange du die Maustaste hältst. Stammt aus dem Wrack und stottert leider ziemlich.' },
+    repair: { name: 'Sauger reparieren', max: 1, costs: [150], needs: 'vac',
       desc: 'Schluss mit dem Stottern: Der Motor läuft wieder rund und saugt deutlich stärker.' },
-    width: { name: 'Breitere Düse', max: 4, costs: [120, 350, 900, 2200], vals: [0.62, 0.85, 1.15, 1.55, 2.05],
-      desc: 'Saugt eine größere Fläche auf einmal.', fmt: v => UI.n1(v * 2) + ' m breit' },
-    power: { name: 'Stärkerer Motor', max: 3, costs: [150, 500, 1400], vals: [1, 1.5, 2.2, 3.2],
-      desc: 'Saugt schneller und reicht weiter.', fmt: v => Math.round(v * 100) + ' % Saugkraft' },
-    tank: { name: 'Größerer Tank', max: 4, costs: [100, 300, 800, 2000], vals: [40, 90, 200, 450, 1000],
-      desc: 'Mehr Staub pro Tour – seltener zum Staublager laufen.', fmt: v => UI.n0(v) + ' kg' },
+    width: { name: 'Breitere Düse', max: 4, costs: [120, 350, 900, 2200], vals: [0.62, 0.85, 1.15, 1.55, 2.05], needs: 'vac',
+      desc: 'Der Sauger nimmt eine größere Fläche auf einmal.', fmt: v => UI.n1(v * 2) + ' m breit' },
+    power: { name: 'Stärkerer Motor', max: 3, costs: [150, 500, 1400], vals: [1, 1.5, 2.2, 3.2], needs: 'vac',
+      desc: 'Der Sauger saugt schneller und reicht weiter.', fmt: v => Math.round(v * 100) + ' % Saugkraft' },
+    tank: { name: 'Größerer Staubbehälter', max: 4, costs: [40, 150, 500, 1500], vals: [12, 30, 70, 160, 400],
+      desc: 'Mehr Staub pro Tour. So viel passt auch in einen Sack.', fmt: v => UI.n0(v) + ' kg' },
+    xl: { name: 'Industriesauger XL', max: 1, costs: [2500], needs: 'repair',
+      desc: 'Das große Gerät: saugt viel breiter und noch mal schneller. Düse und Motor zählen weiter mit.' },
     jet: { name: 'Jetpack', max: 1, costs: [750],
-      desc: 'Leertaste in der Luft gedrückt halten und abheben. Dein erstes Fortbewegungsmittel!' },
+      desc: 'Leertaste in der Luft gedrückt halten und abheben.' },
     fuel: { name: 'Jetpack-Treibstoff', max: 2, costs: [400, 1200], vals: [3.2, 5.5, 9], needs: 'jet',
-      desc: 'Länger in der Luft bleiben.', fmt: v => UI.n1(v) + ' s Schub' }
+      desc: 'Länger in der Luft bleiben.', fmt: v => UI.n1(v) + ' s Schub' },
+    buggy: { name: 'Mondbuggy', max: 1, costs: [6000], needs: 'repair',
+      desc: 'Fahren statt laufen: breiter Saugkopf vorn, 1.500 kg Laderaum, lädt Säcke ein. Mit Schlauch für deinen Handsauger. Entladen an der Fahrzeug-Station.' }
   };
-  const UP_ORDER = ['repair', 'width', 'power', 'tank', 'jet', 'fuel'];
+  const UP_ORDER = ['shovel', 'vac', 'repair', 'width', 'power', 'tank', 'xl', 'jet', 'fuel', 'buggy'];
+
+  // Werkzeuge für die Hand (Tasten 1 bis 4)
+  const TOOLS = [
+    { id: 'spoon', name: 'Löffel', has: () => true },
+    { id: 'shovel', name: 'Schaufel', has: () => G.up.shovel > 0 },
+    { id: 'vac', name: 'Handsauger', has: () => G.up.vac > 0 },
+    { id: 'xl', name: 'Sauger XL', has: () => G.up.xl > 0 }
+  ];
+  function bestTool() { let b = 'spoon'; TOOLS.forEach(t => { if (t.has()) b = t.id; }); return b; }
+  function setTool(id, quiet) {
+    const t = TOOLS.filter(x => x.id === id)[0];
+    if (!t || !t.has()) return;
+    G.tool = id; V.setTool(id);
+    if (!quiet) A.play('click');
+  }
+  function cycleTool(dir) {
+    const own = TOOLS.filter(t => t.has()); if (own.length < 2) return;
+    let i = own.findIndex(t => t.id === G.tool); i = (i + dir + own.length) % own.length;
+    setTool(own[i].id);
+  }
 
   // ---------- Spielstand ----------
   const G = LC.G = {};
   function freshState() {
     G.money = 0; G.shown = 0;
-    G.up = { repair: 0, width: 0, power: 0, tank: 0, jet: 0, fuel: 0 };
+    G.up = {}; UP_ORDER.forEach(k => { G.up[k] = 0; });
     G.tank = { n: 0, g: 0 };
+    G.carry = [];              // getragene Säcke: [{n, g}]
+    G.tool = 'spoon';
     G.stats = { kg: 0, earned: 0, time: 0, sold: 0, sectorDone: false };
     G.stage = 0;
   }
@@ -39,13 +69,18 @@
   const val = id => UP[id].vals[G.up[id]];
   const cap = () => val('tank');
   const tankTotal = () => G.tank.n + G.tank.g;
-  const tankWorth = () => G.tank.n * PRICE_N + G.tank.g * PRICE_G;
+  const carryN = () => G.carry.reduce((a, c) => a + c.n, 0), carryG = () => G.carry.reduce((a, c) => a + c.g, 0);
+  const tankWorth = () => (G.tank.n + carryN()) * PRICE_N + (G.tank.g + carryG()) * PRICE_G;
+  const buggyWorth = () => BG.load.n * PRICE_N + BG.load.g * PRICE_G;
 
   function save() {
     try {
+      let px = PL.pos.x, pz = PL.pos.z;
+      if (BG.driving) { BG.exitPoint(tmpV); px = tmpV.x; pz = tmpV.z; }
       localStorage.setItem(SAVE_KEY, JSON.stringify({
-        v: 1, money: G.money, up: G.up, tank: G.tank, stats: G.stats, stage: G.stage,
-        pos: [PL.pos.x, PL.pos.z, PL.yaw], dust: D.serialize()
+        v: 1, money: G.money, up: G.up, tank: G.tank, stats: G.stats, stage: G.stage, tool: G.tool, carry: G.carry,
+        sacks: SK.serialize(), buggy: BG.owned ? BG.serialize() : null,
+        pos: [px, pz, PL.yaw], dust: D.serialize()
       }));
     } catch (e) { /* Speicher voll oder gesperrt: Spiel läuft trotzdem weiter */ }
   }
@@ -57,18 +92,35 @@
       const o = JSON.parse(raw); if (!o || o.v !== 1) return false;
       freshState();
       G.money = +o.money || 0; G.shown = G.money;
+      const old = !o.up || o.up.shovel === undefined;      // Spielstand von vor Version 0.3
       Object.keys(G.up).forEach(k => { G.up[k] = U.clamp(Math.floor(+(o.up || {})[k] || 0), 0, UP[k].max); });
-      G.tank.n = +(o.tank || {}).n || 0; G.tank.g = +(o.tank || {}).g || 0;
       Object.assign(G.stats, o.stats || {}); G.stage = +o.stage || 0;
+      if (old) { G.up.shovel = 1; G.up.vac = 1; G.stage = G.up.repair ? 6 : 5; }
+      G.tank.n = Math.max(0, +(o.tank || {}).n || 0); G.tank.g = Math.max(0, +(o.tank || {}).g || 0);
+      const over = tankTotal() / cap(); if (over > 1) { G.tank.n /= over; G.tank.g /= over; }
+      G.carry = (Array.isArray(o.carry) ? o.carry : []).slice(0, SK.CARRY).map(c => ({ n: Math.max(0, +c.n || 0), g: Math.max(0, +c.g || 0) }));
+      G.tool = o.tool || bestTool();
       if (!o.dust || !D.deserialize(o.dust)) D.reset();
       if (o.pos) PL.reset(+o.pos[0] || 0, +o.pos[1] || 0, +o.pos[2] || 0); else PL.reset(B.spawn.x, B.spawn.z, B.spawn.yaw);
+      SK.load(o.sacks);
+      BG.load.n = BG.load.g = 0;
+      if (G.up.buggy && Array.isArray(o.buggy)) { BG.setOwned(true); BG.place(+o.buggy[0] || BG.park.x, +o.buggy[1] || BG.park.z, +o.buggy[2] || 0); BG.load.n = Math.max(0, +o.buggy[3] || 0); BG.load.g = Math.max(0, +o.buggy[4] || 0); }
+      else if (G.up.buggy) { BG.setOwned(true); BG.place(BG.park.x, BG.park.z, BG.park.heading); }
+      else BG.setOwned(false);
       return true;
     } catch (e) { return false; }
   }
   function newGame() {
     freshState(); D.reset(); PL.reset(B.spawn.x, B.spawn.z, B.spawn.yaw);
-    V.setRepaired(false);
+    SK.clear(); BG.setOwned(false); BG.load.n = BG.load.g = 0; selling = null;
+    applyState();
     try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+  }
+  function applyState() {
+    V.setRepaired(G.up.repair > 0);
+    const t = TOOLS.filter(x => x.id === G.tool)[0];
+    if (!t || !t.has()) G.tool = bestTool();
+    V.setTool(G.tool);
   }
 
   // ---------- Aufbau ----------
@@ -124,6 +176,8 @@
     if (S.gfx === 'niedrig') W.sun.shadow.mapSize.set(2048, 2048);
     B.build(scene);
     V.init(scene);
+    SK.init(scene, s => { shadowFrames = 2; A.play('thump'); V.kickDust(s.x, s.y, s.z, 12, 0.9); });
+    BG.init(scene);
     const env = buildEnv();
     scene.environment = env; V.scene.environment = env;
 
@@ -139,7 +193,7 @@
 
     freshState();
     if (!load()) { freshState(); D.reset(); PL.reset(B.spawn.x, B.spawn.z, B.spawn.yaw); }
-    V.setRepaired(G.up.repair > 0);
+    applyState();
     A.vol = S.vol; A.music = S.music; PL.sens = S.sens;
 
     bindInput();
@@ -211,10 +265,13 @@
     document.addEventListener('mousedown', e => { if (state === 'play' && e.button === 0) fire = true; });
     document.addEventListener('mouseup', e => { if (e.button === 0) fire = false; });
     document.addEventListener('contextmenu', e => e.preventDefault());
+    document.addEventListener('wheel', e => { if (state === 'play' && !BG.driving) cycleTool(e.deltaY > 0 ? 1 : -1); }, { passive: true });
     document.addEventListener('keydown', e => {
       if (state === 'play') {
         PL.keys[e.code] = true;
         if (e.code === 'KeyE' && !e.repeat) interact();
+        if (e.code === 'KeyG' && !e.repeat) sackKey();
+        if (/^Digit[1-4]$/.test(e.code) && !e.repeat && !BG.driving) { const t = TOOLS[+e.code.slice(5) - 1]; if (t.has()) setTool(t.id); else { A.play('deny'); UI.toast(t.name + ' hast du noch nicht – gibt es in der Werkstatt.', '', 2.2); } }
         if (e.code === 'KeyF' && !e.repeat) { lampOn = !lampOn; A.play('click'); }
         if (e.code === 'KeyM' && !e.repeat) { LC.Map.setOpen(!LC.Map.open); A.play('click'); }
         if (TEST && e.code === 'Escape') setState('pause');
@@ -262,7 +319,6 @@
       if (u.needs && !G.up[u.needs]) { it.locked = true; it.lockTxt = 'Erst ' + UP[u.needs].name + ' kaufen'; }
       return it;
     });
-    items.push({ id: 'buggy', name: 'Mondbuggy', desc: 'Vier Räder, großer Staubanhänger. Damit geht es über den Kraterrand hinaus.', teaser: 'Kommt bald', max: 1, level: 0 });
     items.push({ id: 'robot', name: 'Putzroboter', desc: 'Saugt ganz von allein rund um die Basis – der erste Schritt zur Automatisierung.', teaser: 'Kommt bald', max: 1, level: 0 });
     items.push({ id: 'rocket', name: 'Rakete nach Hause', desc: 'Der Grund, warum du das alles machst. Ein Ticket zurück zur Erde.', teaser: '1.000.000 ¢ · noch ein weiter Weg', max: 1, level: 0, goal: true });
     return items;
@@ -276,6 +332,8 @@
     G.money -= cost; G.shown = G.money; G.up[id] = lv + 1;
     A.play('buy');
     if (id === 'repair') V.setRepaired(true);
+    if (id === 'shovel' || id === 'vac' || id === 'xl') setTool(id, true);
+    if (id === 'buggy') { BG.setOwned(true); BG.place(BG.park.x, BG.park.z, BG.park.heading); UI.toast('Dein Mondbuggy steht neben der Basis bereit!', 'gold', 5); }
     renderShop(); UI.money(G.money, true); save();
   }
   function openShop() { setState('shop'); A.play('click'); if (!TEST && document.pointerLockElement) document.exitPointerLock(); }
@@ -298,37 +356,83 @@
     ]);
   }
 
-  // ---------- Benutzen (E) ----------
-  let nearPoint = null;
+  // ---------- Benutzen (E), Säcke (G), Buggy ----------
+  let nearPoint = null, nearBuggy = false, nearSack = null, driveHint = false, sackHint = false;
   function findNear() {
-    nearPoint = null; let best = 1e9;
+    nearPoint = null; nearBuggy = false; nearSack = null; let best = 1e9;
+    if (BG.driving) return;
     for (let i = 0; i < B.points.length; i++) {
       const p = B.points[i], d = Math.hypot(PL.pos.x - p.x, PL.pos.z - p.z);
       if (d < p.r && d < best && Math.abs(PL.pos.y - (p.y - 1.2)) < 3) { best = d; nearPoint = p; }
     }
+    if (BG.owned && Math.hypot(PL.pos.x - BG.pos.x, PL.pos.z - BG.pos.z) < 3.7 && Math.abs(PL.pos.y - BG.pos.y) < 2.5) nearBuggy = true;
+    nearSack = SK.nearest(PL.pos.x, PL.pos.z, 1.5);
+  }
+  function enterBuggy() {
+    BG.driving = true; BG.lookYaw = 0; BG.lookPitch = -0.08; fire = false; A.play('click');
+    if (!driveHint) { driveHint = true; UI.toast('W/S Gas und Bremse · A/D lenken · Linke Maustaste saugen · E aussteigen', '', 7); }
+  }
+  function exitBuggy() {
+    BG.driving = false; BG.speed = 0; BG.suck = 0; A.setBuggy(false, 0); A.play('click');
+    BG.exitPoint(tmpV); PL.reset(tmpV.x, tmpV.z, BG.heading);
+  }
+  function throwSack(n, g) {
+    PL.forward(tmpV2);
+    const dir = { x: -Math.sin(PL.yaw), z: -Math.cos(PL.yaw) };
+    tmpV.set(camera.position.x + dir.x * 0.5, camera.position.y - 0.55, camera.position.z + dir.z * 0.5);
+    return SK.throwSack(tmpV, dir, n, g);
+  }
+  function sackKey() {
+    if (BG.driving || selling) return;
+    if (G.tank.n + G.tank.g >= 0.5) {
+      if (!throwSack(G.tank.n, G.tank.g)) { A.play('deny'); UI.toast('Es liegen schon zu viele Säcke herum. Bring erst welche weg.'); return; }
+      G.tank.n = 0; G.tank.g = 0; fullBeep = false;
+      if (!sackHint) { sackHint = true; UI.toast('Sack abgestellt. Mit E hebst du ihn später wieder auf (bis zu 2 tragbar).', '', 6); }
+    } else if (G.carry.length) {
+      const c = G.carry.pop(); if (!throwSack(c.n, c.g)) G.carry.push(c);
+    } else { A.play('deny'); UI.toast('Dein Behälter ist leer – nichts zum Einsacken.', '', 2.2); }
   }
   function interact() {
-    if (!nearPoint) return;
-    if (nearPoint.id === 'shop') openShop();
-    else if (nearPoint.id === 'silo') {
-      if (selling) return;
-      if (tankTotal() < 0.05) { A.play('deny'); UI.toast('Dein Tank ist leer. Erst Staub saugen!'); return; }
-      selling = { n: G.tank.n, g: G.tank.g, t: 0, dur: 0.9 + Math.min(1.8, tankTotal() / 160), paid: 0, total: Math.round(tankWorth()) };
+    if (selling) return;
+    if (BG.driving) {
+      if (BG.atStation() && BG.total() > 0.05) {
+        selling = { src: 'buggy', n: BG.load.n, g: BG.load.g, t: 0, dur: 1.2 + Math.min(3.2, BG.total() / 350), paid: 0, total: Math.round(buggyWorth()) };
+        BG.unloading = true; BG.speed = 0;
+      } else exitBuggy();
+      return;
+    }
+    if (nearPoint && nearPoint.id === 'shop') openShop();
+    else if (nearPoint && nearPoint.id === 'silo') {
+      const tot = tankTotal() + carryN() + carryG();
+      if (tot < 0.05) { A.play('deny'); UI.toast('Du hast keinen Staub dabei. Erst sammeln!'); return; }
+      selling = { src: 'tank', tn: G.tank.n, tg: G.tank.g, n: G.tank.n + carryN(), g: G.tank.g + carryG(), t: 0, dur: 0.9 + Math.min(1.8, tot / 160), paid: 0, total: Math.round(tankWorth()) };
+      G.carry = [];
+    }
+    else if (nearBuggy) enterBuggy();
+    else if (nearSack) {
+      if (G.carry.length >= SK.CARRY) { A.play('deny'); UI.toast('Mehr als ' + SK.CARRY + ' Säcke kannst du nicht tragen.', '', 2.5); return; }
+      G.carry.push({ n: nearSack.n, g: nearSack.g }); SK.remove(nearSack); shadowFrames = 2; A.play('click');
     }
   }
   function updateSelling(dt) {
     if (!selling) return;
     const s = selling; s.t += dt;
-    const k = U.clamp(s.t / s.dur, 0, 1), rest = 1 - k;
-    G.tank.n = s.n * rest; G.tank.g = s.g * rest;
+    const k = U.clamp(s.t / s.dur, 0, 1), rest = 1 - k, gfrac = s.g / (s.n + s.g + 1e-6);
     const paidNow = Math.round(s.total * k);
     if (paidNow > s.paid) { G.money += paidNow - s.paid; s.paid = paidNow; }
     coinT -= dt;
     if (coinT <= 0) { coinT = 0.07; A.play('coin', k * 6); }
-    const n = Math.ceil(dt * 150);
-    for (let i = 0; i < n; i++) V.stream(V.nozzleWorld, B.siloNozzle, Math.random() < s.g / (s.n + s.g + 1e-6));
+    const n = Math.ceil(dt * (s.src === 'buggy' ? 260 : 150));
+    if (s.src === 'buggy') {
+      BG.load.n = s.n * rest; BG.load.g = s.g * rest;
+      tmpV.set(BG.pos.x, BG.pos.y + 0.1, BG.pos.z);
+      for (let i = 0; i < n; i++) { tmpV2.copy(BG.hopperWorld); tmpV2.x += (Math.random() - 0.5) * 1.4; tmpV2.z += (Math.random() - 0.5) * 1.0; V.stream(tmpV2, tmpV, Math.random() < gfrac); }
+    } else {
+      G.tank.n = s.tn * rest; G.tank.g = s.tg * rest;
+      for (let i = 0; i < n; i++) V.stream(V.nozzleWorld, B.siloNozzle, Math.random() < gfrac);
+    }
     if (k >= 1) {
-      G.tank.n = 0; G.tank.g = 0;
+      if (s.src === 'buggy') { BG.load.n = 0; BG.load.g = 0; BG.unloading = false; } else { G.tank.n = 0; G.tank.g = 0; }
       G.stats.earned += s.total; G.stats.sold++;
       A.play('sold'); UI.toast('+ ' + UI.n0(s.total) + ' ¢', 'gold');
       UI.money(G.money, true);
@@ -338,13 +442,15 @@
 
   // ---------- Ziele ----------
   const GOALS = [
-    { txt: 'Halte die linke Maustaste gedrückt und sauge Staub vom Boden.', done: () => G.stats.kg >= 4 },
-    { txt: 'Sauge weiter, bis dein Tank voll ist.', done: () => tankTotal() >= cap() - 0.01 || G.stats.sold > 0 },
+    { txt: 'Du hast nur einen Löffel. Halte die linke Maustaste gedrückt und kratz Staub vom Boden.', done: () => G.stats.kg >= 1.5 },
+    { txt: 'Mach deinen Behälter voll (12 kg). Tipp: Mit G füllst du ihn in einen Sack um und wirfst ihn hin.', done: () => tankTotal() >= cap() - 0.01 || G.stats.sold > 0 || SK.list.length > 0 },
     { txt: 'Bring den Staub zum Staublager an der Basis und drücke E am gelben Trichter.', done: () => G.stats.sold > 0 },
-    { txt: 'Geh zur Werkstatt neben dem Wrack und repariere deinen Sauger (60 ¢).', done: () => G.up.repair > 0 },
-    { txt: 'Verdiene Geld für Upgrades. Tipp: In den tiefen Kratern liegt wertvoller Glitzerstaub.', done: () => G.up.jet > 0 },
-    { txt: 'Jetpack! Halte die Leertaste in der Luft gedrückt. Putze jetzt ganz Sektor 1 sauber.', done: () => G.stats.sectorDone },
-    { txt: 'Sektor 1 ist blitzblank! Buggy, Putzroboter und neue Sektoren kommen bald.', done: () => false }
+    { txt: 'Kauf dir in der Werkstatt neben dem Wrack eine Schaufel (30 ¢).', done: () => G.up.shovel > 0 },
+    { txt: 'Spar auf den Handsauger (120 ¢). Ein größerer Behälter (40 ¢) spart Wege.', done: () => G.up.vac > 0 },
+    { txt: 'Der Sauger stottert. Lass ihn in der Werkstatt reparieren (150 ¢).', done: () => G.up.repair > 0 },
+    { txt: 'Verdiene Geld für Upgrades – bis zum Mondbuggy. Tipp: In den tiefen Kratern liegt Glitzerstaub.', done: () => G.up.buggy > 0 || G.stats.sectorDone },
+    { txt: 'Steig mit E in den Buggy und putze ganz Sektor 1 sauber. Entladen an der Fahrzeug-Station.', done: () => G.stats.sectorDone },
+    { txt: 'Sektor 1 ist blitzblank! Putzroboter und neue Sektoren kommen bald.', done: () => false }
   ];
   function updateGoals() {
     while (G.stage < GOALS.length - 1 && GOALS[G.stage].done()) { G.stage++; if (state === 'play') A.play('click'); }
@@ -371,7 +477,14 @@
       V.kickDust(PL.pos.x + ox, PL.pos.y, PL.pos.z + oz, PL.speed > 5 ? 5 : 3, 0.55);
     }
   };
-  const vcfg = { radius: 0.55, rate: 2, reach: 3.6, repaired: false, room: 0, fill: 0, glitRatio: 0, sunlit: 1 };
+  const vcfg = { kind: 'scoop', radius: 0.3, rate: 0.95, period: 0.42, reach: 3.2, repaired: false, room: 0, fill: 0, glitRatio: 0, sunlit: 1, hidden: false };
+  const binp = { f: 0, s: 0, fire: false, mdx: 0, mdy: 0, sens: 1 };
+  const bcb = {
+    onSuck: (n, g) => { const room = BG.room(), tot = n + g, k = tot > room ? room / tot : 1; BG.load.n += n * k; BG.load.g += g * k; G.stats.kg += tot * k; },
+    spawnStream: (from, to, gl) => V.stream(from, to, gl)
+  };
+  const hoseP = new THREE.Vector3();
+  let hoseOn = false;
   const pcfg = { jet: false, fuelTime: 3.2 };
   function onSuck(n, g) {
     const room = cap() - tankTotal(), tot = n + g, k = tot > room ? room / tot : 1;
@@ -406,12 +519,35 @@
 
     if (state === 'play') {
       G.stats.time += dt;
-      pcfg.jet = G.up.jet > 0; pcfg.fuelTime = val('fuel');
-      PL.update(dt, pcfg, evs);
-      PL.applyCamera(camera); camera.updateMatrixWorld();
-      A.setJet(PL.jetting ? 1 : 0);
-      if (PL.jetting && Math.random() < dt * 40) V.spawn(PL.pos.x + (Math.random() - 0.5) * 0.3, PL.pos.y + 0.9, PL.pos.z + (Math.random() - 0.5) * 0.3,
-        (Math.random() - 0.5) * 1.5, -3 - Math.random() * 2, (Math.random() - 0.5) * 1.5, 0, 0.5, 0.07, 2.2, 1.4, 0.6, 0.05);
+      const driving = BG.driving;
+      if (driving) {
+        const k = PL.keys;
+        binp.f = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0); binp.s = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0);
+        if (selling) { binp.f = 0; binp.s = 0; }
+        binp.fire = fire && !selling; binp.mdx = PL.mdx; binp.mdy = PL.mdy; binp.sens = PL.sens; PL.mdx = PL.mdy = 0; PL.lookDX = PL.lookDY = 0;
+        BG.drive(dt, binp, bcb);
+        BG.applyCamera(camera); camera.updateMatrixWorld();
+        PL.pos.copy(BG.pos); PL.vel.set(0, 0, 0); PL.onGround = true; PL.jetting = false; PL.atLimit = BG.atLimit; PL.yaw = BG.heading;
+        A.setJet(0); A.setBuggy(true, Math.abs(BG.speed));
+        // Säcke im Vorbeifahren einladen
+        const sk = SK.nearest(BG.pos.x, BG.pos.z, 2.4);
+        if (sk && sk.n + sk.g <= BG.room()) { BG.load.n += sk.n; BG.load.g += sk.g; SK.remove(sk); shadowFrames = 2; A.play('thump'); UI.toast('Sack eingeladen', '', 1.5); }
+        if (Math.abs(BG.speed) > 2.5 && Math.random() < dt * 14) {
+          const sd = Math.random() < 0.5 ? 1 : -1, ch = Math.cos(BG.heading), sh = Math.sin(BG.heading);
+          V.kickDust(BG.pos.x + ch * sd * 1.05 + sh * 1.2, BG.pos.y, BG.pos.z - sh * sd * 1.05 + ch * 1.2, 3, 0.8);
+        }
+      } else {
+        pcfg.jet = G.up.jet > 0; pcfg.fuelTime = val('fuel');
+        PL.update(dt, pcfg, evs);
+        if (BG.owned) {     // nicht durch den geparkten Buggy laufen
+          const dx = PL.pos.x - BG.pos.x, dz = PL.pos.z - BG.pos.z, d2 = dx * dx + dz * dz, rr = 1.95;
+          if (d2 < rr * rr && d2 > 1e-6 && PL.pos.y - BG.pos.y < 2.3) { const d = Math.sqrt(d2); PL.pos.x = BG.pos.x + dx / d * rr; PL.pos.z = BG.pos.z + dz / d * rr; }
+        }
+        PL.applyCamera(camera); camera.updateMatrixWorld();
+        A.setJet(PL.jetting ? 1 : 0);
+        if (PL.jetting && Math.random() < dt * 40) V.spawn(PL.pos.x + (Math.random() - 0.5) * 0.3, PL.pos.y + 0.9, PL.pos.z + (Math.random() - 0.5) * 0.3,
+          (Math.random() - 0.5) * 1.5, -3 - Math.random() * 2, (Math.random() - 0.5) * 1.5, 0, 0.5, 0.07, 2.2, 1.4, 0.6, 0.05);
+      }
 
       sunlitT -= dt;
       if (sunlitT <= 0) {
@@ -422,25 +558,47 @@
       }
       sunlit += ((vcfg._sun === undefined ? 1 : vcfg._sun) - sunlit) * Math.min(1, dt * 6);
 
-      vcfg.radius = val('width'); vcfg.rate = (G.up.repair ? 4.2 : 2.6) * val('power'); vcfg.reach = 5.2 + G.up.power * 0.6;
-      vcfg.repaired = G.up.repair > 0; vcfg.room = cap() - tankTotal(); vcfg.fill = tankTotal() / cap();
+      // Werkzeug in der Hand
+      const isVac = G.tool === 'vac' || G.tool === 'xl';
+      hoseOn = BG.owned && !driving && isVac && BG.room() > 0.01 && Math.hypot(PL.pos.x - BG.pos.x, PL.pos.z - BG.pos.z) < BG.HOSE_RANGE;
+      if (G.tool === 'spoon') { vcfg.kind = 'scoop'; vcfg.radius = 0.3; vcfg.rate = 0.95; vcfg.period = 0.42; vcfg.reach = 4.4; }
+      else if (G.tool === 'shovel') { vcfg.kind = 'scoop'; vcfg.radius = 0.52; vcfg.rate = 0.95; vcfg.period = 0.6; vcfg.reach = 4.7; }
+      else {
+        const xl = G.tool === 'xl';
+        vcfg.kind = 'vac'; vcfg.radius = val('width') * (xl ? 1.6 : 1); vcfg.rate = (G.up.repair ? 4.2 : 2.6) * val('power') * (xl ? 1.7 : 1);
+        vcfg.reach = 6.2 + G.up.power * 0.6 + (xl ? 1.2 : 0);
+      }
+      vcfg.repaired = G.up.repair > 0; vcfg.hidden = driving;
+      vcfg.room = hoseOn ? BG.room() : cap() - tankTotal(); vcfg.fill = tankTotal() / cap();
       vcfg.glitRatio = tankTotal() > 0 ? G.tank.g / tankTotal() : 0; vcfg.sunlit = sunlit;
-      V.update(dt, time, camera, fire && !selling, vcfg, onSuck);
+      V.update(dt, time, camera, fire && !selling, vcfg, hoseOn ? bcb.onSuck : onSuck);
+      if (driving) A.setVac(BG.suck * 0.9, 0.6, false);
+      SK.update(dt);
+      if (hoseOn) { hoseP.set(0.36, -0.72, 0.1).applyAxisAngle(tmpV.set(0, 1, 0), PL.yaw).add(camera.position); }
+      BG.update(dt, time, 1 - sunlit, hoseOn ? hoseP : null);
       updateSelling(dt);
 
-      // voller Tank
-      const full = tankTotal() >= cap() - 0.01;
+      // voll?
+      const full = driving ? BG.room() <= 0.01 : (!hoseOn && tankTotal() >= cap() - 0.01);
       if (full && !fullBeep) { fullBeep = true; A.play('full'); }
       if (!full) fullBeep = false;
-      UI.warn(full && fire ? 'Tank voll – zurück zum Staublager' : PL.atLimit ? 'Kraterrand zu steil – dafür brauchst du später ein Fahrzeug' : null);
-      UI.cross(!V.target.hit ? 'no' : V.intensity > 0.2 ? 'on' : '');
+      UI.warn(full && fire ? (driving ? 'Laderaum voll – ab zur Fahrzeug-Entladung' : 'Behälter voll – zum Staublager oder mit G in einen Sack füllen')
+        : PL.atLimit ? 'Kraterrand zu steil – hier geht es noch nicht weiter' : null);
+      UI.cross(driving ? (BG.suck > 0.2 ? 'on' : '') : !V.target.hit ? 'no' : V.intensity > 0.2 ? 'on' : '');
 
       // Benutzen-Hinweis
       findNear();
-      if (nearPoint && !selling) {
-        if (nearPoint.id === 'shop') UI.prompt('<kbd>E</kbd>Werkstatt öffnen');
-        else UI.prompt(tankTotal() >= 0.05 ? '<kbd>E</kbd>Tank ins Staublager leeren<em>+ ' + UI.n0(Math.round(tankWorth())) + ' ¢</em>' : 'Staublager – dein Tank ist noch leer');
-      } else UI.prompt(null);
+      if (selling) UI.prompt(null);
+      else if (driving) {
+        if (BG.atStation() && BG.total() > 0.05) UI.prompt('<kbd>E</kbd>Buggy entladen<em>+ ' + UI.n0(Math.round(buggyWorth())) + ' ¢</em>');
+        else if (Math.abs(BG.speed) < 0.6) UI.prompt('<kbd>E</kbd>Aussteigen');
+        else UI.prompt(null);
+      }
+      else if (nearPoint && nearPoint.id === 'shop') UI.prompt('<kbd>E</kbd>Werkstatt öffnen');
+      else if (nearPoint) UI.prompt(tankTotal() + G.carry.length >= 0.05 ? '<kbd>E</kbd>Staub ins Staublager geben<em>+ ' + UI.n0(Math.round(tankWorth())) + ' ¢</em>' : 'Staublager – du hast noch keinen Staub dabei');
+      else if (nearBuggy) UI.prompt('<kbd>E</kbd>In den Buggy steigen');
+      else if (nearSack) UI.prompt('<kbd>E</kbd>Sack aufheben<em>' + UI.n0(nearSack.n + nearSack.g) + ' kg</em>');
+      else UI.prompt(null);
 
       // Sektor fertig?
       const pc = D.percentClean();
@@ -461,7 +619,7 @@
         sx /= m; sy /= m;
         UI.way(true, (sx * 0.5 + 0.5) * window.innerWidth, (-sy * 0.5 + 0.5) * window.innerHeight, bd);
       } else UI.way(false);
-      LC.Map.update(dt, PL.pos.x, PL.pos.z, PL.yaw);
+      LC.Map.update(dt, PL.pos.x, PL.pos.z, BG.driving ? BG.heading + BG.lookYaw : PL.yaw);
       if (LC.Map.open) document.getElementById('map-pc').textContent = UI.n1(D.percentClean() * 100) + ' % sauber';
 
       if (keysT && time > keysT) { UI.el.keys.classList.add('fade'); keysT = 0; }
@@ -473,7 +631,7 @@
         camera.position.y = Math.max(W.heightAt(camera.position.x, camera.position.z) + 2.2, 5.5 + Math.sin(time * 0.05) * 1.2);
         tmpV2.set(-2, 3.4, 1.5); camera.lookAt(tmpV2); camera.updateMatrixWorld();
       }
-      V.idle(dt);
+      V.idle(dt); A.setBuggy(false, 0);
       UI.prompt(null); UI.warn(null);
     }
 
@@ -483,8 +641,13 @@
       G.shown = Math.abs(diff) < 1 ? G.money : G.shown + diff * Math.min(1, dt * 10);
     }
     if (state !== 'menu') {
-      UI.money(G.shown); UI.tank(G.tank.n, G.tank.g, cap(), tankWorth()); UI.sector(D.percentClean());
-      UI.jet(G.up.jet > 0, PL.fuel); updateGoals();
+      UI.money(G.shown); UI.sector(D.percentClean());
+      if (BG.driving) UI.tank('Buggy-Laderaum', BG.load.n, BG.load.g, BG.CAP, buggyWorth(), null);
+      else if (hoseOn && state === 'play') UI.tank('Buggy-Laderaum', BG.load.n, BG.load.g, BG.CAP, buggyWorth(), 'Schlauch angeschlossen – saugt direkt in den Buggy');
+      else UI.tank('Staubbehälter', G.tank.n, G.tank.g, cap(), tankWorth(),
+        G.carry.length ? G.carry.length + (G.carry.length > 1 ? ' Säcke' : ' Sack') + ' dabei (' + UI.n0(carryN() + carryG()) + ' kg)' : null);
+      UI.jet(G.up.jet > 0 && !BG.driving, PL.fuel); updateGoals();
+      UI.tools(BG.driving ? [] : TOOLS.map((t, i) => ({ key: i + 1, name: t.name, has: t.has(), on: t.id === G.tool })));
     }
 
     // Helmlampe: hell im Schatten, fast aus in der Sonne
@@ -498,7 +661,7 @@
     tp: (x, z, yaw, pitch) => { PL.reset(x, z, yaw || 0); if (pitch != null) PL.pitch = pitch; },
     fire: v => { fire = v; }, money: v => { G.money += v; }, interact, buy,
     sim: (sec, fn) => { const n = Math.round(sec * 60); for (let i = 0; i < n; i++) { if (fn) fn(i / 60); update(1 / 60); } },
-    PL, G, V, D,
+    PL, G, V, D, SK, BG, setTool, sackKey, applyState,
     info: () => ({ state, pc: D.percentClean(), tank: tankTotal(), money: G.money, pos: PL.pos.toArray(), post: P.enabled, target: V.target })
   };
 

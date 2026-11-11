@@ -72,6 +72,13 @@
     if (labels) dot(B.pad.x, B.pad.z, '#e8b43a', 3, 'Landeplatz');
     dot(B.shop.x, B.shop.z, '#6fe6ff', labels ? 6 : 4.5, 'Werkstatt', 'sq');
     dot(B.silo.x, B.silo.z, '#ffbf5a', labels ? 7 : 5.5, 'Staublager');
+    const BGm = LC.Buggy, SKm = LC.Sacks;
+    if (BGm) {
+      ctx.strokeStyle = '#e0aa22'; ctx.lineWidth = 2; ctx.save(); ctx.translate(BGm.station.x * s, BGm.station.z * s); ctx.rotate(-0.5); ctx.strokeRect(-2.7 * s, -4 * s, 5.4 * s, 8 * s); ctx.restore();
+      if (labels) dot(BGm.station.x, BGm.station.z, '#e0aa22', 3, 'Fahrzeug-Entladung');
+      if (BGm.owned) dot(BGm.pos.x, BGm.pos.z, '#59f08f', labels ? 6 : 4.5, 'Buggy', 'sq');
+    }
+    if (SKm) SKm.list.forEach(k => dot(k.x, k.z, '#d8b98a', labels ? 3.5 : 2.6));
     if (labels) W.glitterCraters.forEach(c => dot(c.x, c.z + c.R * 0.95, 'rgba(0,0,0,0)', 0, 'Glitzerstaub'));
   }
 
