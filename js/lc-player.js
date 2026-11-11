@@ -12,13 +12,15 @@
   P.yaw = 0; P.pitch = 0; P.onGround = true;
   P.fuel = 1; P.jetting = false; P.airTime = 0;
   P.bob = 0; P.bobAmt = 0; P.dip = 0; P.speed = 0;
+  P.sprint = false; P.crouch = false; P.eye = EYE; P.descending = false;
+  let idleT = 0;
   P.keys = {}; P.mdx = 0; P.mdy = 0; P.sens = 1; P.lookDX = 0; P.lookDY = 0;
   P.atLimit = false;
   let spaceWasUp = true, stepSide = 0;
 
   P.reset = function (x, z, yaw) {
     P.pos.set(x, B.groundAt(x, z), z); P.vel.set(0, 0, 0);
-    P.yaw = yaw || 0; P.pitch = -0.04; P.onGround = true; P.fuel = 1;
+    P.yaw = yaw || 0; P.pitch = -0.04; P.onGround = true; P.fuel = 1; P.sprint = false; P.crouch = false; P.eye = EYE;
   };
 
   P.forward = function (out) {
@@ -40,8 +42,11 @@
     const sy = Math.sin(P.yaw), cy = Math.cos(P.yaw);
     let wx = -sy * f + cy * s, wz = -cy * f - sy * s;
     const wl = Math.hypot(wx, wz); if (wl > 0) { wx /= wl; wz /= wl; }
-    const run = k.ShiftLeft || k.ShiftRight;
-    const top = run ? RUN : WALK;
+    // Sprint und Hocke werden per Tastendruck umgeschaltet (Shift / C)
+    if (wl === 0) { idleT += dt; if (idleT > 0.35) P.sprint = false; } else idleT = 0;
+    if (P.crouch) P.sprint = false;
+    const run = P.sprint;
+    const top = P.crouch ? 2.0 : run ? RUN : WALK;
     const space = !!k.Space;
 
     if (P.onGround) {
@@ -49,7 +54,7 @@
       P.vel.x += (wx * top - P.vel.x) * a; P.vel.z += (wz * top - P.vel.z) * a;
       P.fuel = Math.min(1, P.fuel + dt / 2.2);
       if (space && spaceWasUp) {
-        P.vel.y = JUMP; P.onGround = false; P.airTime = 0;
+        P.vel.y = JUMP; P.onGround = false; P.airTime = 0; P.crouch = false;
         ev.jump && ev.jump();
       }
     } else {
@@ -69,7 +74,12 @@
       P.fuel = Math.max(0, P.fuel - dt / cfg.fuelTime);
     }
 
+    // Jetpack: C in der Luft gedrückt halten = schneller nach unten
+    P.descending = false;
+    if (cfg.jet && !P.onGround && k.KeyC && !space) { P.descending = true; P.vel.y -= 9 * dt; if (P.vel.y < -11) P.vel.y = -11; }
+
     P.vel.y -= G * dt;
+    P.eye += ((P.crouch ? 1.02 : EYE) - P.eye) * Math.min(1, dt * 9);
     P.pos.x += P.vel.x * dt; P.pos.y += P.vel.y * dt; P.pos.z += P.vel.z * dt;
 
     // Hindernisse
@@ -125,7 +135,7 @@
   P.applyCamera = function (cam) {
     const bobY = Math.abs(Math.sin(P.bob)) * 0.055 * P.bobAmt;
     const bobX = Math.cos(P.bob) * 0.02 * P.bobAmt;
-    cam.position.set(P.pos.x + Math.cos(P.yaw) * bobX, P.pos.y + EYE + bobY - P.dip, P.pos.z - Math.sin(P.yaw) * bobX);
+    cam.position.set(P.pos.x + Math.cos(P.yaw) * bobX, P.pos.y + P.eye + bobY - P.dip, P.pos.z - Math.sin(P.yaw) * bobX);
     cam.rotation.order = 'YXZ';
     cam.rotation.set(P.pitch, P.yaw, 0);
   };
