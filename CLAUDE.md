@@ -68,7 +68,8 @@ Spielplan (alle Entscheidungen des Nutzers): https://claude.ai/artifact/FeVhH9CZ
 - Mitfahren im Buggy (Mehrspieler): `riding` in lc-main.js, Merker 16 im Spieler-Zustand; der Beifahrer hat den Bordsauger (saugt in den Laderaum).
 - Schwebegleiter (seit 0.10.0, `lc-glider.js`, `UP.glider`): Leertaste/C hoch/runter, Saugrüssel unter `SUCK_ALT` (Stärke `GD.pull()`), Laderaum, Entladen auf Landeplatz/Station. Mitflieger: `riding === 'glider'`.
   Mehrspieler wie beim Buggy: `MP.gdrv`, Nachrichten `gin`/`gout`, Lage im Feld `g` der Spieler- und `w`-Nachricht, Merker 32 (fliegt) / 64 (fliegt mit).
-- Als Nächstes vom Nutzer gewünscht (12.11.): mehrere Spielstände zur Auswahl, Trailer-Video, Tag/Nacht und Mondstürme, Bau-Hammer mit Bau-Menü (u. a. Glasröhren, die Staub sichtbar zum Verkauf leiten).
+- Spielstände (seit 0.11.0): 3 Plätze, `slotKey(n)` (Platz 1 = alter Schlüssel), aktiver Platz in `S.slot`, Auswahl-Fenster `#slots` (`openSlots`), `meta` im Spielstand für die Übersicht.
+- Als Nächstes vom Nutzer gewünscht (12.11.): Trailer-Video, Tag/Nacht und Mondstürme, Bau-Hammer mit Bau-Menü (u. a. Glasröhren, die Staub sichtbar zum Verkauf leiten).
 - Reihenfolge, die der Nutzer will: (Mehrspieler und Putzroboter sind fertig,) Automatisierung (Luftkanäle, Staubpresse, Drohnen), Rakete als echtes Ziel, eigene Gebäude an der Basis bauen.
 - Noch nicht gebaut (siehe Spielplan): Gleiter, Raumschiff, Luftkanäle, Staubpresse, Drohnen,
   Händler mit schwankenden Preisen, Hangar/Garage/Solarpark, Rakete als Spielziel, Handy-Steuerung.

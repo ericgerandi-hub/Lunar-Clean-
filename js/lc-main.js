@@ -4,7 +4,7 @@
    ========================================================= */
 (function (LC) {
   const U = LC.U, W = LC.World, D = LC.Dust, B = LC.Base, PL = LC.Player, V = LC.Vacuum, P = LC.Post, A = LC.Audio, UI = LC.UI, SK = LC.Sacks, BG = LC.Buggy, AV = LC.Avatar, GL = LC.Globe, CS = LC.Cutscene, MP = LC.MP, RB = LC.Robots, GD = LC.Glider;
-  const VERSION = '0.10.0';                 // nach jeder Änderung hochzählen
+  const VERSION = '0.11.0';                 // nach jeder Änderung hochzählen
   const SAVE_KEY = 'lunarclean_save_v1', SET_KEY = 'lunarclean_settings_v1';
   const DONE_AT = 0.9995;                  // Sektor gilt erst als fertig, wenn die Anzeige 100 % zeigt
   const PRICE_N = 2, PRICE_G = 15;         // ¢ pro kg: normaler Staub / Glitzerstaub
@@ -89,7 +89,9 @@
     G.stats = { kg: 0, earned: 0, time: 0, sold: 0, sectorDone: false, sector2Done: false, sec2Seen: false, intro: false, mapSeen: false, emoted: false };
     G.stage = 0;
   }
-  const S = { sens: 1, vol: 0.7, music: true, gfx: 'mittel', full: true, name: '' };
+  const S = { sens: 1, vol: 0.7, music: true, gfx: 'mittel', full: true, name: '', slot: 1 };
+  // mehrere Spielstände: Platz 1 benutzt den alten Schlüssel, damit vorhandene Spielstände bleiben
+  const SLOTS = 3, slotKey = n => (n === 1 ? SAVE_KEY : SAVE_KEY + '_s' + n);
   const val = id => UP[id].vals[G.up[id]];
   const cap = () => val('tank');
   const tankTotal = () => G.tank.n + G.tank.g;
@@ -103,7 +105,8 @@
       let px = PL.pos.x, pz = PL.pos.z;
       if (BG.driving) { BG.exitPoint(tmpV); px = tmpV.x; pz = tmpV.z; }
       if (GD.driving || riding === 'glider') { GD.exitPoint(tmpV); px = tmpV.x; pz = tmpV.z; }
-      localStorage.setItem(SAVE_KEY, JSON.stringify({
+      localStorage.setItem(slotKey(S.slot), JSON.stringify({
+        meta: { t: Date.now(), pc1: D.percentOf(1), pc2: D.percentOf(2) },
         v: 1, gv: 3, marks: G.marks, money: G.money, up: G.up, tank: G.tank, stats: G.stats, stage: G.stage, tool: G.tool, carry: G.carry,
         sacks: SK.serialize(), buggy: BG.owned ? BG.serialize() : null, glider: GD.owned ? GD.serialize() : null, robots: RB.serialize(),
         pos: [px, pz, PL.yaw], dust: D.serialize(1), dust2: D.serialize(2)
@@ -111,10 +114,11 @@
     } catch (e) { /* Speicher voll oder gesperrt: Spiel läuft trotzdem weiter */ }
   }
   function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify(S)); } catch (e) {} }
-  function hasSave() { try { return !!localStorage.getItem(SAVE_KEY); } catch (e) { return false; } }
+  function hasSave(n) { try { return !!localStorage.getItem(slotKey(n || S.slot)); } catch (e) { return false; } }
+  const anySave = () => { for (let n = 1; n <= SLOTS; n++) if (hasSave(n)) return true; return false; };
   function load() {
     try {
-      const raw = localStorage.getItem(SAVE_KEY); if (!raw) return false;
+      const raw = localStorage.getItem(slotKey(S.slot)); if (!raw) return false;
       const o = JSON.parse(raw); if (!o || o.v !== 1) return false;
       freshState();
       // Spielstände vor 0.9 (gv < 3): Sektor 2 hatte eigene Koordinaten – in die offene Welt verschieben
@@ -153,7 +157,7 @@
     freshState(); W.open = false; D.reset(); PL.reset(B.spawn.x, B.spawn.z, B.spawn.yaw); setSec(1, true);
     SK.clear(); RB.clear(); BG.setOwned(false); BG.load.n = BG.load.g = 0; GD.setOwned(false); GD.driving = false; GD.load.n = GD.load.g = 0; selling = null;
     applyState();
-    try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+    try { localStorage.removeItem(slotKey(S.slot)); } catch (e) {}
   }
   // ---------- Offene Welt ----------
   // ebene Flächen unter den Bauten (vor dem Aufbau des Geländes setzen; Angaben relativ zum jeweiligen Krater)
@@ -341,7 +345,8 @@
     bindUI();
     UI.el.ver.textContent = 'Version ' + VERSION;
     try { if (window.matchMedia('(pointer: coarse)').matches && !window.matchMedia('(any-pointer: fine)').matches) document.getElementById('touch').classList.remove('hidden'); } catch (e) {}
-    UI.el['btn-play'].textContent = hasSave() ? 'Weiterspielen' : 'Spielen';
+    S.slot = U.clamp(Math.floor(+S.slot) || 1, 1, SLOTS);
+    UI.el['btn-play'].textContent = anySave() ? 'Weiterspielen' : 'Spielen';
     UI.show('btn-new', hasSave());
     setState('menu');
     // Start-Animation zu Ende laufen lassen (Klick überspringt sie)
@@ -514,7 +519,11 @@
 
   function bindUI() {
     const e = UI.el;
-    e['btn-play'].addEventListener('click', () => startPlay(!MP.guest && !G.stats.intro && G.stats.time < 1));
+    e['btn-play'].addEventListener('click', () => {
+      if (MP.guest || MP.host || !anySave()) startPlay(!MP.guest && !G.stats.intro && G.stats.time < 1);
+      else openSlots();
+    });
+    $('slots-back').addEventListener('click', () => showEl('slots', false));
     e['btn-new'].addEventListener('click', () => { if (MP.active) MP.leave(); newGame(); shadowFrames = 3; startPlay(true); });
     e['btn-resume'].addEventListener('click', () => startPlay());
     e['btn-tomenu'].addEventListener('click', () => {
@@ -591,6 +600,48 @@
     }
   }
   const restShown = {};
+
+  // ---------- Spielstände ----------
+  function openSlots() {
+    const box = $('slot-list'); box.innerHTML = '';
+    const fmtT = s => { const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return h ? h + ' h ' + m + ' min' : m + ' min'; };
+    for (let n = 1; n <= SLOTS; n++) {
+      let o = null; try { o = JSON.parse(localStorage.getItem(slotKey(n)) || 'null'); } catch (e) {}
+      const row = document.createElement('div'); row.className = 'slot' + (n === S.slot ? ' cur' : '');
+      const info = document.createElement('div'); info.className = 'si';
+      const h = document.createElement('b'); h.textContent = 'SPIELSTAND ' + n + (n === S.slot && o ? ' · zuletzt gespielt' : ''); info.appendChild(h);
+      const d = document.createElement('span');
+      if (o) {
+        const mt = o.meta || {}, p1 = mt.pc1 != null ? UI.n1(Math.floor(mt.pc1 * 1000) / 10) + ' %' : '?', p2 = mt.pc2 != null && o.up && o.up.tunnel ? ' · Sektor 2: ' + UI.n1(Math.floor(mt.pc2 * 1000) / 10) + ' %' : '';
+        d.textContent = UI.n0(Math.floor(+o.money || 0)) + ' ¢ · Sektor 1: ' + p1 + p2 + ' · ' + fmtT(o.stats && +o.stats.time || 0) + (mt.t ? ' · ' + new Date(mt.t).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '');
+      } else d.textContent = 'Leer – hier kannst du ein neues Spiel anfangen.';
+      info.appendChild(d); row.appendChild(info);
+      const go = document.createElement('button'); go.className = 'pri small'; go.textContent = o ? 'Spielen' : 'Neues Spiel';
+      go.addEventListener('click', () => {
+        if (state !== 'menu') return;
+        const sw = n !== S.slot;
+        if (sw && (G.stats.time > 0 || hasSave())) save();          // den bisherigen Stand sichern, bevor gewechselt wird
+        S.slot = n; saveSettings();
+        if (!o) { newGame(); shadowFrames = 3; showEl('slots', false); startPlay(true); return; }
+        if (sw) { if (!load()) newGame(); shadowFrames = 3; }
+        showEl('slots', false); startPlay(!G.stats.intro && G.stats.time < 1);
+      });
+      row.appendChild(go);
+      if (o) {
+        const del = document.createElement('button'); del.className = 'small'; del.textContent = 'Löschen'; let armed = 0;
+        del.addEventListener('click', () => {
+          if (performance.now() - armed > 4000) { armed = performance.now(); del.textContent = 'Wirklich? Nochmal klicken'; setTimeout(() => { del.textContent = 'Löschen'; }, 4000); return; }
+          try { localStorage.removeItem(slotKey(n)); } catch (e) {}
+          if (n === S.slot) { const k = S.slot; newGame(); S.slot = k; shadowFrames = 3; }
+          UI.el['btn-play'].textContent = anySave() ? 'Weiterspielen' : 'Spielen';
+          openSlots();
+        });
+        row.appendChild(del);
+      }
+      box.appendChild(row);
+    }
+    showEl('slots', true);
+  }
 
   // ---------- Mehrspieler-Fenster ----------
   let mpLost = false;

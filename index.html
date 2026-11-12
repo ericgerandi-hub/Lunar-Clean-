@@ -152,6 +152,13 @@
   #mp-hud .c { font-size: 11px; letter-spacing: .14em; color: var(--mut); text-align: center; margin-bottom: 2px; }
   #mp-hud .c b { color: var(--cy); font-size: 13px; letter-spacing: .2em; }
   #mp-hud i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .7); }
+  #slots { background: rgba(0, 4, 8, .62); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); z-index: 30; }
+  #slots .box { width: min(720px, 94vw); max-height: 94vh; overflow: auto; box-sizing: border-box; }
+  .slot { display: flex; align-items: center; gap: 10px; border: 1px solid rgba(255, 255, 255, .1); padding: 12px 14px; margin-bottom: 10px; }
+  .slot.cur { border-color: var(--cy); box-shadow: inset 3px 0 0 var(--cy); }
+  .slot .si { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .slot .si b { font-size: 15px; letter-spacing: .12em; color: #fff; }
+  .slot .si span { font-size: 13.5px; color: var(--mut); line-height: 1.4; }
   #mp { background: rgba(0, 4, 8, .62); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); z-index: 30; }
   #mp .box { width: min(640px, 94vw); max-height: 94vh; overflow: auto; box-sizing: border-box; }
   #mp input { font: inherit; color: var(--txt); background: #0a1820; border: 1px solid var(--line); padding: 8px 10px; font-size: 16px; width: 210px; }
@@ -288,7 +295,7 @@
   <p class="tag">Bruchlandung auf dem Mond. Dein Schiff ist Schrott, der Mond ist komplett verstaubt – und Staub lässt sich verkaufen. Fang mit einem Löffel an und putz dir den Weg nach Hause frei.</p>
   <div class="btns" style="margin-bottom:26px">
     <button id="btn-play" class="pri">Spielen</button>
-    <button id="btn-new" class="hidden">Neues Spiel</button>
+    <button id="btn-new" class="hidden" style="display:none">Neues Spiel</button>
     <button id="btn-mp">Mehrspieler</button>
     <button id="btn-full">Vollbild: An</button>
   </div>
@@ -303,6 +310,15 @@
   </div>
 </div>
 <div id="ver"></div>
+
+<div id="slots" class="overlay hidden">
+  <div class="box panel">
+    <h2>SPIELSTÄNDE</h2>
+    <div class="sub" style="margin-bottom:14px">Drei Plätze – zum Beispiel einer für dich allein und einer für das Spiel mit deinem Freund. Gespeichert wird automatisch im gewählten Platz.</div>
+    <div id="slot-list"></div>
+    <div class="btns"><button id="slots-back" class="small">Zurück</button></div>
+  </div>
+</div>
 
 <div id="mp" class="overlay hidden">
   <div class="box panel">
@@ -356,25 +372,25 @@
 <div id="loading"><div class="stars"></div><div class="moon"><i class="dusty"></i><i class="clean"></i><i class="cr"></i></div><div class="beam"></div><div class="t"><b>LUNAR CLEAN</b><em></em><span>EIN MOND. SEHR VIEL STAUB.</span></div></div>
 
 <script src="lib/three.min.js"></script>
-<script src="js/lc-util.js?v=0.10.0"></script>
-<script src="js/lc-world.js?v=0.10.0"></script>
-<script src="js/lc-dust.js?v=0.10.0"></script>
-<script src="js/lc-base.js?v=0.10.0"></script>
-<script src="js/lc-audio.js?v=0.10.0"></script>
-<script src="js/lc-player.js?v=0.10.0"></script>
-<script src="js/lc-vacuum.js?v=0.10.0"></script>
-<script src="js/lc-post.js?v=0.10.0"></script>
-<script src="js/lc-sacks.js?v=0.10.0"></script>
-<script src="js/lc-buggy.js?v=0.10.0"></script>
-<script src="js/lc-robots.js?v=0.10.0"></script>
-<script src="js/lc-glider.js?v=0.10.0"></script>
-<script src="js/lc-map.js?v=0.10.0"></script>
-<script src="js/lc-avatar.js?v=0.10.0"></script>
-<script src="js/lc-globe.js?v=0.10.0"></script>
-<script src="js/lc-cutscene.js?v=0.10.0"></script>
-<script src="js/lc-ui.js?v=0.10.0"></script>
-<script src="js/lc-net.js?v=0.10.0"></script>
-<script src="js/lc-mp.js?v=0.10.0"></script>
-<script src="js/lc-main.js?v=0.10.0"></script>
+<script src="js/lc-util.js?v=0.11.0"></script>
+<script src="js/lc-world.js?v=0.11.0"></script>
+<script src="js/lc-dust.js?v=0.11.0"></script>
+<script src="js/lc-base.js?v=0.11.0"></script>
+<script src="js/lc-audio.js?v=0.11.0"></script>
+<script src="js/lc-player.js?v=0.11.0"></script>
+<script src="js/lc-vacuum.js?v=0.11.0"></script>
+<script src="js/lc-post.js?v=0.11.0"></script>
+<script src="js/lc-sacks.js?v=0.11.0"></script>
+<script src="js/lc-buggy.js?v=0.11.0"></script>
+<script src="js/lc-robots.js?v=0.11.0"></script>
+<script src="js/lc-glider.js?v=0.11.0"></script>
+<script src="js/lc-map.js?v=0.11.0"></script>
+<script src="js/lc-avatar.js?v=0.11.0"></script>
+<script src="js/lc-globe.js?v=0.11.0"></script>
+<script src="js/lc-cutscene.js?v=0.11.0"></script>
+<script src="js/lc-ui.js?v=0.11.0"></script>
+<script src="js/lc-net.js?v=0.11.0"></script>
+<script src="js/lc-mp.js?v=0.11.0"></script>
+<script src="js/lc-main.js?v=0.11.0"></script>
 </body>
 </html>
