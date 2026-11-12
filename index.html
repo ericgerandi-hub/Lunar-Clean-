@@ -148,6 +148,7 @@
   button:disabled { opacity: .45; cursor: default; }
   #menu .how { margin-top: 0; display: grid; grid-template-columns: auto auto; gap: 5px 22px; font-size: 14px; color: var(--mut); }
   #menu .how b { color: var(--txt); font-weight: 600; }
+  #clock { position: absolute; left: 0; right: 0; bottom: -20px; text-align: center; font-size: 11px; letter-spacing: .16em; color: var(--mut); text-shadow: 0 0 5px #000; }
   #mp-hud { position: absolute; right: 22px; top: 230px; width: 176px; font-size: 13px; color: var(--txt); display: flex; flex-direction: column; gap: 3px; z-index: 3; background: var(--panel); border: 1px solid var(--line); padding: 7px 10px 8px; box-sizing: border-box; }
   #mp-hud .c { font-size: 11px; letter-spacing: .14em; color: var(--mut); text-align: center; margin-bottom: 2px; }
   #mp-hud .c b { color: var(--cy); font-size: 13px; letter-spacing: .2em; }
@@ -246,6 +247,7 @@
   </div>
   <div id="hud-tc" class="panel">
     <div class="lbl"><span id="sec-l">Sektor 1</span><b id="sec-v">0,0 % sauber</b></div>
+    <div id="clock"></div>
     <div class="bar"><i id="sec-b"></i></div>
   </div>
   <canvas id="mini"></canvas>
@@ -372,25 +374,25 @@
 <div id="loading"><div class="stars"></div><div class="moon"><i class="dusty"></i><i class="clean"></i><i class="cr"></i></div><div class="beam"></div><div class="t"><b>LUNAR CLEAN</b><em></em><span>EIN MOND. SEHR VIEL STAUB.</span></div></div>
 
 <script src="lib/three.min.js"></script>
-<script src="js/lc-util.js?v=0.11.0"></script>
-<script src="js/lc-world.js?v=0.11.0"></script>
-<script src="js/lc-dust.js?v=0.11.0"></script>
-<script src="js/lc-base.js?v=0.11.0"></script>
-<script src="js/lc-audio.js?v=0.11.0"></script>
-<script src="js/lc-player.js?v=0.11.0"></script>
-<script src="js/lc-vacuum.js?v=0.11.0"></script>
-<script src="js/lc-post.js?v=0.11.0"></script>
-<script src="js/lc-sacks.js?v=0.11.0"></script>
-<script src="js/lc-buggy.js?v=0.11.0"></script>
-<script src="js/lc-robots.js?v=0.11.0"></script>
-<script src="js/lc-glider.js?v=0.11.0"></script>
-<script src="js/lc-map.js?v=0.11.0"></script>
-<script src="js/lc-avatar.js?v=0.11.0"></script>
-<script src="js/lc-globe.js?v=0.11.0"></script>
-<script src="js/lc-cutscene.js?v=0.11.0"></script>
-<script src="js/lc-ui.js?v=0.11.0"></script>
-<script src="js/lc-net.js?v=0.11.0"></script>
-<script src="js/lc-mp.js?v=0.11.0"></script>
-<script src="js/lc-main.js?v=0.11.0"></script>
+<script src="js/lc-util.js?v=0.12.0"></script>
+<script src="js/lc-world.js?v=0.12.0"></script>
+<script src="js/lc-dust.js?v=0.12.0"></script>
+<script src="js/lc-base.js?v=0.12.0"></script>
+<script src="js/lc-audio.js?v=0.12.0"></script>
+<script src="js/lc-player.js?v=0.12.0"></script>
+<script src="js/lc-vacuum.js?v=0.12.0"></script>
+<script src="js/lc-post.js?v=0.12.0"></script>
+<script src="js/lc-sacks.js?v=0.12.0"></script>
+<script src="js/lc-buggy.js?v=0.12.0"></script>
+<script src="js/lc-robots.js?v=0.12.0"></script>
+<script src="js/lc-glider.js?v=0.12.0"></script>
+<script src="js/lc-map.js?v=0.12.0"></script>
+<script src="js/lc-avatar.js?v=0.12.0"></script>
+<script src="js/lc-globe.js?v=0.12.0"></script>
+<script src="js/lc-cutscene.js?v=0.12.0"></script>
+<script src="js/lc-ui.js?v=0.12.0"></script>
+<script src="js/lc-net.js?v=0.12.0"></script>
+<script src="js/lc-mp.js?v=0.12.0"></script>
+<script src="js/lc-main.js?v=0.12.0"></script>
 </body>
 </html>

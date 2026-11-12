@@ -158,7 +158,7 @@
 
   // ---------- Verbindung ----------
   const send = d => { if (MP.host) N.toGuest(null, d); else N.toHost(d); };
-  const eco = () => ({ money: G.money, up: G.up, stats: G.stats, stage: G.stage });
+  const eco = () => ({ money: G.money, up: G.up, stats: G.stats, stage: G.stage, ph: +G.clock.toFixed(5), day: G.day, st: G.stormLeft > 0 ? 1 : 0 });
   const bgState = () => [+BG.pos.x.toFixed(2), +BG.pos.z.toFixed(2), +BG.heading.toFixed(3), +BG.load.n.toFixed(2), +BG.load.g.toFixed(2), BG.sec, MP.drv];
   const roster = () => [['H', MP.name, 0]].concat(Object.keys(MP.players).map(k => [k, MP.players[k].name, MP.players[k].ci]));
   function pushWorld(to) {

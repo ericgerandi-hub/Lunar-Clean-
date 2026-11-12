@@ -4,7 +4,7 @@
    ========================================================= */
 (function (LC) {
   const U = LC.U, W = LC.World, D = LC.Dust, B = LC.Base, PL = LC.Player, V = LC.Vacuum, P = LC.Post, A = LC.Audio, UI = LC.UI, SK = LC.Sacks, BG = LC.Buggy, AV = LC.Avatar, GL = LC.Globe, CS = LC.Cutscene, MP = LC.MP, RB = LC.Robots, GD = LC.Glider;
-  const VERSION = '0.11.0';                 // nach jeder Änderung hochzählen
+  const VERSION = '0.12.0';                 // nach jeder Änderung hochzählen
   const SAVE_KEY = 'lunarclean_save_v1', SET_KEY = 'lunarclean_settings_v1';
   const DONE_AT = 0.9995;                  // Sektor gilt erst als fertig, wenn die Anzeige 100 % zeigt
   const PRICE_N = 2, PRICE_G = 15;         // ¢ pro kg: normaler Staub / Glitzerstaub
@@ -84,6 +84,7 @@
     G.tank = { n: 0, g: 0 };
     G.carry = [];              // getragene Säcke: [{n, g}]
     G.sec = 1;                 // in welchem Sektor man gerade ist
+    G.clock = 0.17; G.day = 1; G.stormNext = 380 + Math.random() * 300; G.stormLeft = 0;      // Tageszeit (0..1), Tag-Zähler, Mondsturm
     G.marks = [];              // Markierungen auf der Karte (Welt-Koordinaten): [{x, z}]
     G.tool = 'spoon';
     G.stats = { kg: 0, earned: 0, time: 0, sold: 0, sectorDone: false, sector2Done: false, sec2Seen: false, intro: false, mapSeen: false, emoted: false };
@@ -107,7 +108,7 @@
       if (GD.driving || riding === 'glider') { GD.exitPoint(tmpV); px = tmpV.x; pz = tmpV.z; }
       localStorage.setItem(slotKey(S.slot), JSON.stringify({
         meta: { t: Date.now(), pc1: D.percentOf(1), pc2: D.percentOf(2) },
-        v: 1, gv: 3, marks: G.marks, money: G.money, up: G.up, tank: G.tank, stats: G.stats, stage: G.stage, tool: G.tool, carry: G.carry,
+        v: 1, gv: 3, clock: G.clock, day: G.day, stormNext: G.stormNext, marks: G.marks, money: G.money, up: G.up, tank: G.tank, stats: G.stats, stage: G.stage, tool: G.tool, carry: G.carry,
         sacks: SK.serialize(), buggy: BG.owned ? BG.serialize() : null, glider: GD.owned ? GD.serialize() : null, robots: RB.serialize(),
         pos: [px, pz, PL.yaw], dust: D.serialize(1), dust2: D.serialize(2)
       }));
@@ -123,7 +124,8 @@
       freshState();
       // Spielstände vor 0.9 (gv < 3): Sektor 2 hatte eigene Koordinaten – in die offene Welt verschieben
       const oldW = o.gv !== 3, C2 = W.C[2], sh = (x, z, sec) => (oldW && +sec === 2 ? [x + C2.x, z + C2.z] : [x, z]);
-      G.money = +o.money || 0; G.shown = G.money;
+      G.money = +o.money || 0;
+      if (o.clock != null) { G.clock = U.clamp(+o.clock || 0, 0, 1); G.day = Math.max(1, Math.floor(+o.day) || 1); G.stormNext = Math.max(60, +o.stormNext || 400); } G.shown = G.money;
       const old = !o.up || o.up.shovel === undefined;      // Spielstand von vor Version 0.3
       Object.keys(G.up).forEach(k => { G.up[k] = U.clamp(Math.floor(+(o.up || {})[k] || 0), 0, UP[k].max); });
       Object.assign(G.stats, o.stats || {}); G.stage = +o.stage || 0;
@@ -221,6 +223,7 @@
         if (k === 'buggy') BG.setOwned(v > 0);
         if (k === 'glider') GD.setOwned(v > 0);
       });
+      if (e.ph != null) { G.clock = +e.ph || 0; G.day = e.day || 1; G.stormLeft = e.st ? 30 : 0; }
       ['sectorDone', 'sector2Done', 'sec2Seen', 'bonusPaid', 'bonus2Paid'].forEach(k => { G.stats[k] = !!e.stats[k]; });
       G.stage = +e.stage || 0;
       if (ch) { BG.CAP = val('bcap'); BG.headR = val('bhead'); const t = TOOLS.filter(x => x.id === G.tool)[0]; if (!t || !t.has()) setTool(bestTool(), true); }
@@ -972,12 +975,39 @@
 
   // steht der Spieler in der Sonne? (für das Licht auf dem Sauger)
   function checkSun() {
+    if (W.sunK < 0.04) return 0;            // Nacht
     const s = W.SUN_DIR, ox = camera.position.x, oy = camera.position.y, oz = camera.position.z;
     for (let d = 1.5; d < 85; d += 2.2) {
       const x = ox + s.x * d, y = oy + s.y * d, z = oz + s.z * d;
       if (y < W.heightAt(x, z)) return 0.1;
     }
-    return 1;
+    return (0.25 + 0.75 * W.sunK) * (1 - stormK * 0.6);
+  }
+
+  // ---------- Tag, Nacht und Mondsturm ----------
+  const DAY_LEN = 960;            // Sekunden für einen ganzen Tag (rund 10 min hell, 6 min dunkel)
+  let stormK = 0, wasNight = false, clockShown = '';
+  function updateSky(dt, run) {
+    if (run && !MP.guest) {
+      G.clock += dt / DAY_LEN; if (G.clock >= 1) { G.clock -= 1; }
+      if (G.stormLeft > 0) { G.stormLeft -= dt; if (G.stormLeft <= 0) { G.stormLeft = 0; G.stormNext = 420 + Math.random() * 420; UI.toast('Der Mondsturm hat sich gelegt.', '', 4); } }
+      else { G.stormNext -= dt; if (G.stormNext <= 0) { G.stormLeft = 55 + Math.random() * 35; UI.toast('MONDSTURM!', 'big', 4); UI.toast('Die Sicht wird schlecht – auf der Karte (M) findest du dich zurecht.', '', 6); A.play('deny'); } }
+    } else if (run && G.stormLeft > 0 && G.stormLeft < 29) G.stormLeft = 0;      // Gast: der Gastgeber meldet den Sturm immer wieder neu
+    if (W.setTime(G.clock)) shadowFrames = Math.max(shadowFrames, 1);
+    const tgt = G.stormLeft > 0 ? 1 : 0; stormK += U.clamp(tgt - stormK, -dt / 7, dt / 5);
+    W.setStorm(stormK, time);
+    const night = W.sunK < 0.3;
+    if (run && night !== wasNight) {
+      wasNight = night;
+      if (night) UI.toast('Die Sonne geht unter. F schaltet die Helmlampe ein.', '', 6); else { if (!MP.guest) G.day++; UI.toast('Sonnenaufgang – Tag ' + G.day, 'gold', 5); }
+    }
+    // Staubfahnen im Sturm
+    if (run && stormK > 0.05) {
+      const n = Math.floor(dt * 140 * stormK + Math.random()), c = camera.position, b = 0.3 + 0.7 * W.sunK;
+      for (let i = 0; i < n; i++) V.spawn(c.x + (Math.random() - 0.5) * 44 - 14, c.y - 1.5 + Math.random() * 7, c.z + (Math.random() - 0.5) * 44, 16 + Math.random() * 10, (Math.random() - 0.5) * 1.5, 3 + Math.random() * 4, 0, 1.6 + Math.random(), 0.1 + Math.random() * 0.14, 0.55 * b, 0.42 * b, 0.3 * b, 0.5);
+    }
+    const hh = (G.clock * 24 + 6) % 24, txt = 'TAG ' + G.day + ' · ' + String(Math.floor(hh)).padStart(2, '0') + ':' + String(Math.floor(hh % 1 * 6) * 10).padStart(2, '0') + (G.stormLeft > 0 ? ' · STURM' : night ? ' · NACHT' : '');
+    if (txt !== clockShown) { clockShown = txt; $('clock').textContent = txt; }
   }
 
   // ---------- Schleife ----------
@@ -1235,6 +1265,7 @@
       if (MP.active) { SK.update(dt); updateRobots(dt); BG.update(dt, time, 1 - sunlit, null); GD.update(dt, time); if (travelFade > 0 && state !== 'cut') { travelFade -= dt; $('black').style.opacity = U.clamp(travelFade / 0.8, 0, 1); } }
     }
     MP.update(dt, time);
+    updateSky(dt, state === 'play' || (MP.active && state !== 'menu' && state !== 'cut'));
 
     // Geld-Anzeige zählt hoch
     if (G.shown !== G.money) {
@@ -1263,7 +1294,7 @@
     tp: (x, z, yaw, pitch) => { PL.reset(x, z, yaw || 0); if (pitch != null) PL.pitch = pitch; },
     fire: v => { fire = v; }, money: v => { G.money += v; }, interact, buy,
     sim: (sec, fn) => { const n = Math.round(sec * 60); for (let i = 0; i < n; i++) { if (fn) fn(i / 60); update(1 / 60); } },
-    film, step: filmStep, AV, RB, THREE_camera: () => camera, THREE_scene: () => scene,
+    film, step: filmStep, clock: ph => { G.clock = ph; }, storm: sec => { G.stormLeft = sec; }, AV, RB, THREE_camera: () => camera, THREE_scene: () => scene,
     PL, G, V, D, SK, BG, GD, CS, GL, MP, W, setSec, setTool, sackKey, applyState, openMap, openGlobe, closeMap, startEmote, startPlay,
     info: () => ({ state, pc: D.percentClean(), tank: tankTotal(), money: G.money, pos: PL.pos.toArray(), post: P.enabled, target: V.target })
   };

@@ -586,6 +586,7 @@
 
   // ---------- Aufbau ----------  // ---------- Aufbau ----------
   W.build = function (scene, dustTex, glitTex) {
+    W.scene = scene;
     // dustTex/glitTex: { 1: Textur, 2: Textur }
     W.tu = {}; W.terrains = {};
     [1, 2].forEach(sn => { W.terrains[sn] = buildTerrain(sn, dustTex[sn], glitTex[sn]); scene.add(W.terrains[sn]); });
@@ -626,6 +627,52 @@
     // Aufhellung: Erdschein von oben, Rückstrahlung vom Boden
     W.hemi = new THREE.HemisphereLight(0x7f95b8, 0x6b5d50, 0.85);
     scene.add(W.hemi);
+    // Erdschein: schwaches blaues Licht, das man erst nachts bemerkt
+    W.earthLight = new THREE.DirectionalLight(0x6f9cff, 0); W.earthLight.position.copy(W.EARTH_DIR).multiplyScalar(300); scene.add(W.earthLight);
+    // Mondsturm: Dunst in der Ferne (Nebel) und eine Staubwand vor dem Himmel
+    scene.fog = new THREE.FogExp2(0x2a2016, 0);
+    W.stormShell = new THREE.Mesh(new THREE.SphereGeometry(3000, 32, 16), new THREE.ShaderMaterial({
+      uniforms: { uK: { value: 0 }, uT: { value: 0 }, uCol: { value: new THREE.Color(0.16, 0.12, 0.08) } },
+      vertexShader: 'varying vec3 vD;\nvoid main(){ vD = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: [
+        'uniform float uK; uniform float uT; uniform vec3 uCol; varying vec3 vD;',
+        'float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }',
+        'float n(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h(i), h(i + vec2(1.0, 0.0)), f.x), mix(h(i + vec2(0.0, 1.0)), h(i + vec2(1.0, 1.0)), f.x), f.y); }',
+        'void main(){ float a = atan(vD.z, vD.x); vec2 p = vec2(a * 6.0 + uT * 0.35, vD.y * 9.0 - uT * 0.06);',
+        ' float s = n(p) * 0.6 + n(p * 2.7 + 4.0) * 0.4;',
+        ' float low = 1.0 - smoothstep(-0.1, 0.75, vD.y);',
+        ' gl_FragColor = vec4(uCol * (0.75 + s * 0.6), uK * (0.55 + 0.45 * low) * (0.8 + 0.2 * s)); }'
+      ].join('\n'), transparent: true, depthWrite: false, side: THREE.BackSide, fog: false
+    }));
+    W.stormShell.renderOrder = 20; W.stormShell.frustumCulled = false; W.stormShell.visible = false; W.sky.add(W.stormShell);
+    W.setTime(W.dayPhase);
+  };
+
+  // ---------- Tag und Nacht ----------
+  // phase 0..1 = ein Mondtag im Spiel; 0,25 = Mittag. Rund 60 % davon ist es hell.
+  W.dayPhase = 0.17; W.sunK = 1; W.sunEl = 0.5; W.storm = 0;
+  const shadowDir = new THREE.Vector3(0, -1, 0), cDay = new THREE.Color(0x7f95b8), cNight = new THREE.Color(0x3f62a8);
+  // stellt Sonne und Licht ein; gibt true zurück, wenn die Schatten neu gerechnet werden müssen
+  W.setTime = function (ph) {
+    ph -= Math.floor(ph); W.dayPhase = ph;
+    const el = Math.sin(ph * Math.PI * 2) * 0.46 + 0.16, az = 1.03 + (ph - 0.25) * 2.4;
+    W.sunEl = el; W.SUN_DIR.set(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
+    const k = U.smoothstep(-0.03, 0.14, el), low = 1 - U.smoothstep(0.05, 0.32, el); W.sunK = k;
+    if (!W.sun) return false;
+    const dim = 1 - W.storm * 0.55;
+    W.sun.intensity = 2.9 * k * dim; W.sun.color.setRGB(1, 0.953 - 0.3 * low, 0.886 - 0.48 * low);
+    W.hemi.intensity = 0.85 * (0.17 + 0.83 * k) * (1 - W.storm * 0.3); W.hemi.color.copy(cNight).lerp(cDay, k);
+    W.earthLight.intensity = 0.5 * (1 - k) * (1 - W.storm * 0.6);
+    W.sunSprite.position.copy(W.SUN_DIR).multiplyScalar(4800); W.sunSprite.visible = el > -0.1;
+    if (k > 0 && shadowDir.angleTo(W.SUN_DIR) > 0.008) { shadowDir.copy(W.SUN_DIR); fitShadow(); return true; }
+    return false;
+  };
+  // k = 0..1 Stärke des Mondsturms
+  W.setStorm = function (k, t) {
+    W.storm = k; if (!W.stormShell) return;
+    const b = 0.12 + 0.88 * W.sunK, f = W.scene.fog;
+    f.density = k * 0.021; f.color.setRGB(0.20 * b, 0.15 * b, 0.10 * b);
+    const m = W.stormShell.material; W.stormShell.visible = k > 0.003; m.uniforms.uK.value = Math.min(1, k * 1.05); m.uniforms.uT.value = t; m.uniforms.uCol.value.setRGB(0.20 * b, 0.15 * b, 0.10 * b);
   };
 
   W.update = function (t, camera, pxRatio) {
