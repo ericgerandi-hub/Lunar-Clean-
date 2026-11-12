@@ -80,7 +80,7 @@
   .rest.near { opacity: 1; font-size: 15px; animation: restp 0.9s ease-in-out infinite; }
   .rest.near i { border-left-width: 14px; border-right-width: 14px; border-top-width: 25px; }
   @keyframes restp { 50% { filter: brightness(1.5); } }
-  #rest-n { position: absolute; left: 50%; top: 78px; transform: translateX(-50%); color: #ffb060; font-size: 13px; letter-spacing: .08em; text-shadow: 0 0 6px #000, 0 0 2px #000; white-space: nowrap; }
+  #rest-n { position: absolute; left: 50%; top: 98px; transform: translateX(-50%); color: #ffb060; font-size: 13px; letter-spacing: .08em; text-shadow: 0 0 6px #000, 0 0 2px #000; white-space: nowrap; }
   #way i { width: 13px; height: 13px; border: 2px solid var(--am); transform: rotate(45deg); background: rgba(255, 191, 90, .25); margin-bottom: 4px; }
 
   #mini { position: absolute; right: 22px; top: 20px; width: 176px; height: 176px; border-radius: 50%; border: 1px solid var(--line); box-shadow: 0 0 0 4px rgba(5, 12, 18, .55), 0 0 22px rgba(0, 0, 0, .6); }
@@ -151,7 +151,7 @@
   button:disabled { opacity: .45; cursor: default; }
   #menu .how { margin-top: 0; display: grid; grid-template-columns: auto auto; gap: 5px 22px; font-size: 14px; color: var(--mut); }
   #menu .how b { color: var(--txt); font-weight: 600; }
-  #clock { position: absolute; left: 0; right: 0; bottom: -20px; text-align: center; font-size: 11px; letter-spacing: .16em; color: var(--mut); text-shadow: 0 0 5px #000; }
+  #clock { position: absolute; left: 0; right: 0; top: 79px; text-align: center; font-size: 11px; letter-spacing: .16em; color: var(--mut); text-shadow: 0 0 5px #000; }
   #mp-hud { position: absolute; right: 22px; top: 230px; width: 176px; font-size: 13px; color: var(--txt); display: flex; flex-direction: column; gap: 3px; z-index: 3; background: var(--panel); border: 1px solid var(--line); padding: 7px 10px 8px; box-sizing: border-box; }
   #mp-hud .c { font-size: 11px; letter-spacing: .14em; color: var(--mut); text-align: center; margin-bottom: 2px; }
   #mp-hud .c b { color: var(--cy); font-size: 13px; letter-spacing: .2em; }
@@ -250,7 +250,6 @@
   </div>
   <div id="hud-tc" class="panel">
     <div class="lbl"><span id="sec-l">Sektor 1</span><b id="sec-v">0,0 % sauber</b></div>
-    <div id="clock"></div>
     <div class="bar"><i id="sec-b"></i></div>
   </div>
   <canvas id="mini"></canvas>
@@ -277,6 +276,7 @@
   <div id="warn" class="panel hidden"></div>
   <div id="toasts"></div>
   <div id="way" class="hidden"><i></i><span id="way-d"></span></div>
+  <div id="clock"></div>
   <div id="rests"></div>
   <div id="rest-n" class="hidden"></div>
   <div id="edges" class="hidden"><div class="scr l"><canvas id="edge-l"></canvas><span>KANTE LINKS<b>▮ SPUR</b></span></div><div class="scr r"><canvas id="edge-r"></canvas><span>KANTE RECHTS<b>▮ SPUR</b></span></div></div>

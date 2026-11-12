@@ -17,6 +17,7 @@ Spielplan (alle Entscheidungen des Nutzers): https://claude.ai/artifact/FeVhH9CZ
   - `lc-buggy.js` Mondbuggy (fahren, Saugkopf, 1.500 kg Laderaum, Schlauch für den Handsauger) und Fahrzeug-Entladestation
   - `lc-robots.js` Putzroboter (`UP.robot`, bis 4): suchen den nächsten Staub (`D.nearest`), saugen, liefern selbst ab; E einpacken, R absetzen
   - `lc-glider.js` Schwebegleiter (fliegen, Saugrüssel, Laderaum, Mitflieger)
+  - `lc-build.js` Bauen mit dem Bau-Hammer (Glasröhre mit Einwurf, Lichtmast, Signalbake)
   - `lc-post.js` HDR, Bloom, Filmkurve (fällt ohne Float-Texturen auf direktes Zeichnen zurück)
   - `lc-audio.js` alle Töne und Musik live erzeugt (keine Audiodateien)
   - `lc-map.js` Minimap (dreht mit), große Karte (Taste M; Maus: verschieben, zoomen, Markierungen), Kanten-Monitore im Buggy
@@ -69,7 +70,9 @@ Spielplan (alle Entscheidungen des Nutzers): https://claude.ai/artifact/FeVhH9CZ
 - Schwebegleiter (seit 0.10.0, `lc-glider.js`, `UP.glider`): Leertaste/C hoch/runter, Saugrüssel unter `SUCK_ALT` (Stärke `GD.pull()`), Laderaum, Entladen auf Landeplatz/Station. Mitflieger: `riding === 'glider'`.
   Mehrspieler wie beim Buggy: `MP.gdrv`, Nachrichten `gin`/`gout`, Lage im Feld `g` der Spieler- und `w`-Nachricht, Merker 32 (fliegt) / 64 (fliegt mit).
 - Spielstände (seit 0.11.0): 3 Plätze, `slotKey(n)` (Platz 1 = alter Schlüssel), aktiver Platz in `S.slot`, Auswahl-Fenster `#slots` (`openSlots`), `meta` im Spielstand für die Übersicht.
-- Als Nächstes vom Nutzer gewünscht (12.11.): Trailer-Video, Tag/Nacht und Mondstürme, Bau-Hammer mit Bau-Menü (u. a. Glasröhren, die Staub sichtbar zum Verkauf leiten).
+- Tag/Nacht und Mondsturm (seit 0.12.0): `G.clock` (0..1, 0,25 = Mittag), `DAY_LEN` 960 s, `W.setTime` stellt `W.SUN_DIR` (wird überall mitbenutzt), Licht und Schatten; `W.sunK` = Helligkeit. Sturm: `G.stormLeft/stormNext`, `W.setStorm` (Nebel + Staubwand vor dem Himmel). `updateSky` in lc-main.js; im Mehrspieler gibt der Gastgeber Uhr und Sturm vor (`ph`, `st`).
+- Bau-Hammer (seit 0.12.0, `lc-build.js`, `UP.hammer`, Taste B): `BD.TYPES` (tube, lamp, beacon), Freischaltungen in `G.bunlock`, Bauten in `BD.list` (gespeichert als `builds`). Glasröhre: Einwurf-Punkt `intake`, `BD.deposit`, Staub kommt über `tubeArrive` als Geld an. Mehrspieler: Gäste schicken `bld`, der Gastgeber führt `buildDo` aus und verteilt die Liste (`bl`, `bu`).
+- Trailer: Film-Modus `LC.debug.film` / `LC.debug.step(dt)` (nur `?test=1`); Szenen und Skripte lagen im Scratchpad (nicht im Repo). Rechnen in der Sandbox ist sehr langsam (Software-Grafik).
 - Reihenfolge, die der Nutzer will: (Mehrspieler und Putzroboter sind fertig,) Automatisierung (Luftkanäle, Staubpresse, Drohnen), Rakete als echtes Ziel, eigene Gebäude an der Basis bauen.
 - Noch nicht gebaut (siehe Spielplan): Gleiter, Raumschiff, Luftkanäle, Staubpresse, Drohnen,
   Händler mit schwankenden Preisen, Hangar/Garage/Solarpark, Rakete als Spielziel, Handy-Steuerung.

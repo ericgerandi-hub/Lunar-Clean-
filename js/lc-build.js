@@ -22,7 +22,7 @@
       steel: new THREE.MeshStandardMaterial({ color: 0x8a9096, roughness: 0.45, metalness: 0.7 }),
       dark: new THREE.MeshStandardMaterial({ color: 0x24272c, roughness: 0.7, metalness: 0.2 }),
       acc: new THREE.MeshStandardMaterial({ color: 0xd4601a, roughness: 0.5 }),
-      glass: new THREE.MeshStandardMaterial({ color: 0xbfe8ff, roughness: 0.04, metalness: 0.1, transparent: true, opacity: 0.26, depthWrite: false, side: THREE.DoubleSide }),
+      glass: new THREE.MeshStandardMaterial({ color: 0xbfe8ff, roughness: 0.04, metalness: 0.1, transparent: true, opacity: 0.38, depthWrite: false, side: THREE.DoubleSide, emissive: 0x2a6f88, emissiveIntensity: 0.55 }),
       dust: new THREE.MeshStandardMaterial({ color: 0x5a4a3a, roughness: 1 }),
       glit: new THREE.MeshStandardMaterial({ color: 0x5a66c8, roughness: 0.6, emissive: 0x1a2a88, emissiveIntensity: 1.2 }),
       lampOn: new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, 2.7, 1.8) }),
@@ -67,14 +67,14 @@
       // Höhen glätten, damit die Röhre nicht zackt
       for (let k = 0; k < 2; k++) for (let i = 2; i < pts.length - 1; i++) pts[i].y = (pts[i - 1].y + pts[i].y * 2 + pts[i + 1].y) / 4;
       b.curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.4); b.len = b.curve.getLength();
-      const tube = mesh(new THREE.TubeGeometry(b.curve, Math.max(12, Math.round(b.len * 1.4)), 0.22, 10, false), mats.glass, 0, 0, 0, g); tube.renderOrder = 4;
+      const tube = mesh(new THREE.TubeGeometry(b.curve, Math.max(12, Math.round(b.len * 1.4)), 0.3, 12, false), mats.glass, 0, 0, 0, g); tube.renderOrder = 4;
       for (let d = 6; d < b.len - 3; d += 8) {
         const p = b.curve.getPointAt(d / b.len), tg = b.curve.getTangentAt(d / b.len), gy = B.groundAt(b.x + p.x, b.z + p.z) - y;
-        const ring = mesh(new THREE.TorusGeometry(0.25, 0.035, 6, 16), mats.dark, p.x, p.y, p.z, g); ring.lookAt(p.x + tg.x + g.position.x * 0, p.y + tg.y, p.z + tg.z); ring.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), tg);
+        const ring = mesh(new THREE.TorusGeometry(0.33, 0.045, 6, 16), mats.acc, p.x, p.y, p.z, g); ring.lookAt(p.x + tg.x + g.position.x * 0, p.y + tg.y, p.z + tg.z); ring.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), tg);
         if (p.y - gy > 0.6) mesh(new THREE.CylinderGeometry(0.035, 0.05, p.y - gy - 0.24, 6), mats.steel, p.x, (p.y - 0.24 + gy) / 2, p.z, g);
       }
       b.blobs = []; b.queue = { n: 0, g: 0 }; b.emitT = 0; b.pool3 = [];
-      for (let i = 0; i < 26; i++) { const s = new THREE.Mesh(new THREE.SphereGeometry(0.17, 8, 6), mats.dust); s.visible = false; g.add(s); b.pool3.push(s); }
+      for (let i = 0; i < 26; i++) { const s = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), mats.dust); s.visible = false; g.add(s); b.pool3.push(s); }
     }
     scene.add(g); b.g = g;
   }
