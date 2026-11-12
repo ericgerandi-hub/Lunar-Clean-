@@ -125,6 +125,15 @@
       if (d2 < rr * rr && d2 > 1e-6) { const d = Math.sqrt(d2); p.x = c.x + dx / d * rr; p.z = c.z + dz / d * rr; v.x *= 0.5; v.z *= 0.5; }
     }
     gy = B.groundAt(p.x, p.z);
+    // der Querbalken des Tors am Pass (in 7 bis 8,3 m Höhe): drunter durch oder drüber weg, nicht mittendurch
+    if (B.gatePos) {
+      const gx = p.x - B.gatePos.x, gz = p.z - B.gatePos.z, pd = W.PASS, pl = Math.hypot(pd.b.x - pd.a.x, pd.b.z - pd.a.z), ux = (pd.b.x - pd.a.x) / pl, uz = (pd.b.z - pd.a.z) / pl;
+      const along = gx * ux + gz * uz, side = Math.abs(gx * uz - gz * ux), gh = B.groundAt(B.gatePos.x, B.gatePos.z);
+      if (Math.abs(along) < 3.6 && side < 9.5) {
+        const lo = gh + 4.6, hi = gh + 9.4;          // Gleiter ist rund 2,2 m hoch
+        if (p.y > lo && p.y < hi) { if (p.y - lo < hi - p.y) { p.y = lo; if (v.y > 0) v.y = 0; } else { p.y = hi; if (v.y < 0) v.y = 0; } }
+      }
+    }
     // vorausschauen: steigt das Gelände vor ihm an, hebt er sich mit
     const ahead = Math.max(gy, B.groundAt(p.x + v.x * 0.5, p.z + v.z * 0.5));
     const keep = airborne && inp.up >= 0 ? 0.5 : 0;         // beim Sinken (C) setzt er ganz auf
