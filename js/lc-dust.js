@@ -135,8 +135,9 @@
   // nächste staubige Stelle zu (px, pz) im selben Sektor; avoid = [{x, z, r}] wird ausgelassen (für die Putzroboter).
   // ax, az, aw: Stellen nahe (ax, az) werden bevorzugt (aw = Gewicht)
   const near = { x: 0, z: 0 };
-  D.nearest = function (wx, wz, avoid, wax, waz, aw) {
-    aw = aw || 0;
+  // only = [[{x, z, r}, …], …]: die Stelle muss in jeder Gruppe in mindestens einem Kreis liegen (Lichtmast, Signalbake)
+  D.nearest = function (wx, wz, avoid, wax, waz, aw, only) {
+    aw = aw || 0; const no = only ? only.length : 0;
     const m = mapAt(wx, wz), SIZE = m.SIZE, CELL = m.CELL, px = wx - m.cx, pz = wz - m.cz, ax = (wax || 0) - m.cx, az = (waz || 0) - m.cz;
     const d = m.data, R2 = m.CLEAN_R * m.CLEAN_R, na = avoid ? avoid.length : 0; let best = 1e18, bx = 0, bz = 0;
     for (let j = 0; j < N; j++) {
@@ -148,6 +149,11 @@
         if (q >= best || x * x + z * z >= R2) continue;
         let ok = true;
         for (let a = 0; a < na; a++) { const v = avoid[a], ex = x + m.cx - v.x, ez = z + m.cz - v.z; if (ex * ex + ez * ez < v.r * v.r) { ok = false; break; } }
+        for (let o = 0; ok && o < no; o++) {
+          const grp = only[o]; let hit = false;
+          for (let c = 0; c < grp.length; c++) { const v = grp[c], ex = x + m.cx - v.x, ez = z + m.cz - v.z; if (ex * ex + ez * ez < v.r * v.r) { hit = true; break; } }
+          ok = hit;
+        }
         if (ok) { best = q; bx = x; bz = z; }
       }
     }

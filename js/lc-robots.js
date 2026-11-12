@@ -85,8 +85,15 @@
     // dieselbe Stelle wie eben und nichts geschafft? Dann kommt er nicht hin (z. B. unter einem Felsen)
     if (r.has && r.gain < 0.004) { if (++r.tries >= 3) { r.ban.push({ x: r.tx, z: r.tz, r: 1.6, until: now + 180000 }); avoid.push(r.ban[r.ban.length - 1]); r.tries = 0; } } else r.tries = 0;
     // Staub nahe am Absetzpunkt zuerst: so wächst eine runde saubere Fläche statt dünner Schlangenlinien
-    let t = D.nearest(r.x, r.z, avoid, r.ax, r.az, 0.6);
-    if (!t && avoid.length > r.ban.length) t = D.nearest(r.x, r.z, r.ban, r.ax, r.az, 0.6);
+    // nachts nur im Licht der Lichtmasten; steht er im Kreis einer Signalbake, putzt er nur dort
+    const env = RB.env, only = [];
+    if (env.night) only.push(env.lamps);
+    const mine = env.beacons.filter(b => Math.hypot(b.x - r.ax, b.z - r.az) < b.r);
+    if (mine.length) only.push(mine);
+    const lim = only.length ? only : null;
+    let t = D.nearest(r.x, r.z, avoid, r.ax, r.az, 0.6, lim);
+    if (!t && avoid.length > r.ban.length) t = D.nearest(r.x, r.z, r.ban, r.ax, r.az, 0.6, lim);
+    r.zoneDone = !t && mine.length > 0;
     if (!t) { r.has = false; return false; }
     r.tx = t.x; r.tz = t.z; r.has = true; r.gain = 0; return true;
   }
@@ -113,7 +120,10 @@
   }
 
   // o: { sec, sim, hub: {x, z}, onSell(n, g), time }
+  // o: { sim, hubs, onSell, time, night, lamps: [{x, z, r}], beacons: [{x, z, r}] }
+  RB.env = { night: false, lamps: [], beacons: [] };
   RB.update = function (dt, o) {
+    RB.env = o;
     for (let i = 0; i < RB.list.length; i++) {
       const r = RB.list[i], m = r.m, here = !r.packed;
       m.g.visible = here;
@@ -127,17 +137,21 @@
         r.x += (r.nx - r.x) * k; r.z += (r.nz - r.z) * k; let dh = r.nh - r.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); r.h += dh * k;
         r.spd = Math.hypot(r.x - ox, r.z - oz) / Math.max(dt, 1e-4);
       } else {
+        // nachts arbeitet er nur, wenn sein Absetzpunkt im Licht eines Lichtmasts liegt
+        r.dark = o.night && !o.lamps.some(l => Math.hypot(l.x - r.ax, l.z - r.az) < l.r);
+        if (r.dark && r.state !== 'unload') { r.state = 'dark'; r.has = false; } else if (r.state === 'dark') { r.state = 'seek'; r.scanT = 0; }
         const full = r.n + r.g >= RB.CAP - 0.5;
-        if (full && r.state !== 'unload') r.state = 'home';
+        if (full && r.state !== 'unload' && !r.dark) r.state = 'home';
         if (r.state === 'home') {
           if (drive(r, dt, hub.x, hub.z, 4.6) < 2.6) { r.state = 'unload'; r.sellT = 1.8; }
         } else if (r.state === 'unload') {
           r.sellT -= dt;
           if (r.sellT <= 0) { if (r.n + r.g > 0.05) o.onSell(r.n, r.g); r.n = r.g = 0; r.state = 'seek'; r.has = false; r.scanT = 0; }
-        } else {
+        } else if (!r.dark) {
           r.scanT -= dt;
           const dist = r.has ? Math.hypot(r.tx - r.x, r.tz - r.z) : 1e9;
-          if (r.scanT <= 0 && (!r.has || dist < 0.7 || r.state === 'idle')) {
+          // neues Ziel suchen: angekommen, nichts vor, oder die Stelle ist inzwischen sauber (z. B. dicht an einem Mast, wo er nicht ganz hinkommt)
+          if (r.scanT <= 0 && (!r.has || dist < 0.7 || r.state === 'idle' || D.amountAt(r.tx, r.tz) <= 0)) {
             r.scanT = r.state === 'idle' ? 4 : 0.5;
             if (pickTarget(r, r.sec)) r.state = 'seek';
             else if (r.n + r.g > 0.5) r.state = 'home';
@@ -165,7 +179,8 @@
       m.car.position.y = r.state === 'unload' ? Math.abs(Math.sin(o.time * 14)) * 0.02 : 0;
       for (let w = 0; w < 4; w++) m.wheels[w].rotation.x -= r.spd * dt / 0.17;
       const blink = (o.time * 1.6 + i * 0.37) % 1 < 0.5 ? 1 : 0.25;
-      if (r.state === 'home' || r.state === 'unload') m.lampMat.color.setRGB(3.2 * blink, 1.6 * blink, 0.2 * blink);
+      if (r.state === 'dark') m.lampMat.color.setRGB(1.4, 0.12, 0.08);
+      else if (r.state === 'home' || r.state === 'unload') m.lampMat.color.setRGB(3.2 * blink, 1.6 * blink, 0.2 * blink);
       else if (r.state === 'idle') m.lampMat.color.setRGB(0.5, 0.9, 1.6);
       else m.lampMat.color.setRGB(0.4 * blink, 3 * blink, 0.9 * blink);
     }
