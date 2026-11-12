@@ -242,7 +242,7 @@
         N.toGuest(null, { t: 'sk-', id: s.id, to: id, bg: !!m.bg, n: s.n, g: s.g });
         break;
       }
-      case 'bld': ctx.buildFor({ a: m.a, ty: m.ty, id: m.id, x: +m.x || 0, z: +m.z || 0 }); pushWorld(); break;
+      case 'bld': ctx.buildFor({ a: m.a, ty: m.ty, id: m.id, x: +m.x || 0, z: +m.z || 0, n: +m.n || 0, g: +m.g || 0, kg: +m.kg || 0 }); pushWorld(); break;
       case 'bin': if (!MP.drv && BG.owned) { MP.drv = id; } pushWorld(); break;
       case 'gin': if (!MP.gdrv && GD.owned) { MP.gdrv = id; } pushWorld(); break;
       case 'gout':
