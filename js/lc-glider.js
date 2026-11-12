@@ -127,7 +127,8 @@
     gy = B.groundAt(p.x, p.z);
     // vorausschauen: steigt das Gelände vor ihm an, hebt er sich mit
     const ahead = Math.max(gy, B.groundAt(p.x + v.x * 0.5, p.z + v.z * 0.5));
-    if (p.y < ahead + (airborne ? 0.5 : 0)) { p.y += (ahead + (airborne ? 0.5 : 0) - p.y) * Math.min(1, dt * 9); if (v.y < 0) v.y = 0; }
+    const keep = airborne && inp.up >= 0 ? 0.5 : 0;         // beim Sinken (C) setzt er ganz auf
+    if (p.y < ahead + keep) { p.y += (ahead + keep - p.y) * Math.min(1, dt * 9); if (v.y < 0 && keep) v.y = 0; }
     if (p.y < gy) { p.y = gy; if (v.y < 0) v.y = 0; }
     if (p.y > 95) { p.y = 95; if (v.y > 0) v.y = 0; }
     GD.alt = p.y - gy; GD.speed = Math.hypot(v.x, v.z);
@@ -135,7 +136,7 @@
     const want = inp.fire && GD.alt < GD.SUCK_ALT * 1.15 && GD.room() > 0.01 ? 1 : 0;
     GD.suck += (want - GD.suck) * Math.min(1, dt * 6);
     if (GD.suck > 0.2) {
-      const res = D.suck(p.x, p.z, 1.9, 6.5 * GD.suck * GD.pull(), dt, GD.room());
+      const res = D.suck(p.x, p.z, 2.1, 10 * GD.suck * GD.pull(), dt, GD.room());
       if (res.n + res.g > 0) { cb.onSuck(res.n, res.g); if (Math.random() < dt * 40) { tmp.set(p.x + (Math.random() - 0.5) * 3, gy + 0.1, p.z + (Math.random() - 0.5) * 3); V.stream(tmp, GD.pos, Math.random() < res.g / (res.n + res.g)); } }
     }
     const fwd = -(v.x * sh + v.z * ch);

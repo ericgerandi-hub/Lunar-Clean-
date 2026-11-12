@@ -237,6 +237,8 @@
       else if (G.carry.length < SK.CARRY) { G.carry.push({ n, g }); A.play('click'); }
       else throwSack(n, g);
     },
+    enterGlider: () => { if (state === 'play' && !inVeh() && !selling && !emote) enterGlider(); else MP.leftGlider(); },
+    exitGlider: () => { if (GD.driving) { GD.driving = false; GD.suck = 0; A.setBuggy(false, 0); GD.exitPoint(tmpV); PL.reset(tmpV.x, tmpV.z, GD.heading); } },
     enterBuggy: () => { if (state === 'play' && !inVeh() && !selling && !emote) enterBuggy(); else MP.leftBuggy(); },
     exitBuggy: () => { if (BG.driving) { selling = null; BG.unloading = false; BG.driving = false; BG.speed = 0; BG.suck = 0; A.setBuggy(false, 0); BG.exitPoint(tmpV); PL.reset(tmpV.x, tmpV.z, BG.heading); } }
   };

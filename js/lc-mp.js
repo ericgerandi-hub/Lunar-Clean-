@@ -6,14 +6,15 @@
    melden, was sie tun. Geld und Upgrades gehören allen.
    ========================================================= */
 (function (LC) {
-  const U = LC.U, W = LC.World, D = LC.Dust, B = LC.Base, PL = LC.Player, V = LC.Vacuum, SK = LC.Sacks, BG = LC.Buggy, AV = LC.Avatar, N = LC.Net, UI = LC.UI;
+  const GD = LC.Glider, U = LC.U, W = LC.World, D = LC.Dust, B = LC.Base, PL = LC.Player, V = LC.Vacuum, SK = LC.Sacks, BG = LC.Buggy, AV = LC.Avatar, N = LC.Net, UI = LC.UI;
   const MP = { active: false, host: false, guest: false, ready: false, id: null, name: 'Astronaut', code: '', drv: null, players: {}, MAX_GUESTS: 3 };
   const COLORS = [0xd4601a, 0x2f8fe6, 0x46b85a, 0xb060e0], CSS = ['#ff9550', '#6cb8ff', '#7fe08f', '#d09cff'];
   const TOOL_IDS = ['spoon', 'shovel', 'vac', 'xl'];
   let ctx = null, scene = null, G = null, timer = null, tickN = 0, syncT = 0;
   let ops = [], applying = false, myOps = [];
   // Gast: eigene Änderungen an Geld und Buggy-Ladung, die der Gastgeber noch nicht bestätigt hat
-  let seq = 0, pend = [], acc = { m: 0, ln: 0, lg: 0, kg: 0, sold: 0 }, prev = { m: 0, ln: 0, lg: 0, kg: 0, sold: 0 };
+  let seq = 0, pend = [], acc = { m: 0, ln: 0, lg: 0, gn: 0, gg: 0, kg: 0, sold: 0 }, prev = { m: 0, ln: 0, lg: 0, gn: 0, gg: 0, kg: 0, sold: 0 };
+  let wantFly = 0, gSeen = false;
   let wantDrive = 0, snap = null, wel = null, lastAck = {}, ownedSeen = false, lastRx = 0;
 
   // ---------- Staub: jede Putz-Bewegung mitschreiben ----------
@@ -110,6 +111,14 @@
         p.x = BG.pos.x; p.z = BG.pos.z; p.shadow.visible = false;
         continue;
       }
+      if ((p.flags & 96) && GD.owned) {
+        // sitzt im Gleiter (32 = fliegt, 64 = fliegt mit)
+        GD.seat(p.flags & 32 ? 0 : 1, av.root.position); av.root.rotation.y = p.flags & 32 ? GD.heading : p.yaw;
+        AV.pose(av, 'sit', 1, 10); av.body.rotation.x = 0; av.tool.visible = false;
+        av.aL.g.rotation.set(1.1, 0, 0.12); av.aR.g.rotation.set(1.1, 0, -0.12); av.aL.fore.rotation.x = 0.35; av.aR.fore.rotation.x = 0.35;
+        p.x = GD.pos.x; p.z = GD.pos.z; p.shadow.visible = false;
+        continue;
+      }
       if ((p.flags & 16) && BG.here()) {
         // fährt mit: sitzt rechts und richtet den Bordsauger aus
         const sh = Math.sin(BG.heading), ch = Math.cos(BG.heading);
@@ -155,8 +164,8 @@
   function pushWorld(to) {
     if (!MP.host) return;
     const e = eco(), b = bgState();
-    const r = LC.Robots.net();
-    (to ? [to] : N.guests()).forEach(id => N.toGuest(id, { t: 'w', ack: lastAck[id] || 0, e, b, r }));
+    const r = LC.Robots.net(), g = [+GD.pos.x.toFixed(2), +GD.pos.y.toFixed(2), +GD.pos.z.toFixed(2), +GD.heading.toFixed(3), +GD.load.n.toFixed(2), +GD.load.g.toFixed(2), MP.gdrv];
+    (to ? [to] : N.guests()).forEach(id => N.toGuest(id, { t: 'w', ack: lastAck[id] || 0, e, b, r, g }));
   }
   MP.pushWorld = pushWorld;
   MP.resync = () => { if (MP.host) sendSnap('sync'); };
@@ -200,8 +209,8 @@
     if (!p) return;
     switch (m.t) {
       case 'p':
-        setPState(id, m.s, m.b);
-        N.toGuest(null, { t: 'p', id, s: m.s, b: m.b }, id);
+        setPState(id, m.s, m.b); p.g = m.g || null;
+        N.toGuest(null, { t: 'p', id, s: m.s, b: m.b, g: m.g }, id);
         break;
       case 'o':
         if (!Array.isArray(m.o)) break;
@@ -212,6 +221,7 @@
         const dm = +m.m || 0;
         G.money = Math.max(0, G.money + dm); if (dm > 0) G.stats.earned += dm;
         G.stats.kg += Math.max(0, +m.kg || 0); G.stats.sold += Math.max(0, m.sold | 0);
+        GD.load.n = U.clamp(GD.load.n + (+m.gn || 0), 0, GD.CAP); GD.load.g = U.clamp(GD.load.g + (+m.gg || 0), 0, GD.CAP - GD.load.n);
         BG.load.n = U.clamp(BG.load.n + (+m.ln || 0), 0, BG.CAP); BG.load.g = U.clamp(BG.load.g + (+m.lg || 0), 0, BG.CAP - BG.load.n);
         lastAck[id] = m.q | 0; pushWorld();
         break;
@@ -233,6 +243,10 @@
         break;
       }
       case 'bin': if (!MP.drv && BG.owned) { MP.drv = id; } pushWorld(); break;
+      case 'gin': if (!MP.gdrv && GD.owned) { MP.gdrv = id; } pushWorld(); break;
+      case 'gout':
+        if (MP.gdrv === id) { MP.gdrv = null; GD.busy = false; if (Array.isArray(m.g)) GD.place(+m.g[0] || 0, +m.g[1] || 0, +m.g[2] || 0); pushWorld(); }
+        break;
       case 'bout':
         if (MP.drv === id) { MP.drv = null; if (Array.isArray(m.b) && BG.here()) BG.place(+m.b[0] || 0, +m.b[1] || 0, +m.b[2] || 0); BG.busy = false; ctx.shadow(); pushWorld(); }
         break;
@@ -253,7 +267,7 @@
       const s = snap; snap = null;
       if (s.k === 'join') {
         ctx.applySnap('join', s.sec, s.parts.join(''), s.sacks, wel.e);
-        prev.m = G.money; prev.ln = BG.load.n; prev.lg = BG.load.g; prev.kg = G.stats.kg; prev.sold = G.stats.sold;
+        prev.m = G.money; prev.ln = BG.load.n; prev.lg = BG.load.g; prev.gn = GD.load.n; prev.gg = GD.load.g; prev.kg = G.stats.kg; prev.sold = G.stats.sold;
         MP.ready = true; applyWorld({ ack: 0, e: wel.e, b: wel.b });
         if (MP.onReady) MP.onReady();
       } else if (MP.ready) {
@@ -275,7 +289,7 @@
     }
     if (!MP.ready) return;
     switch (m.t) {
-      case 'p': setPState(m.id, m.s, m.b); break;
+      case 'p': setPState(m.id, m.s, m.b); if (MP.players[m.id]) MP.players[m.id].g = m.g || null; break;
       case 'o': if (Array.isArray(m.o)) applyOps(m.o, true); break;
       case 'w': applyWorld(m); break;
       case 'ev': ctx.event(m); break;
@@ -289,11 +303,23 @@
   }
   function applyWorld(m) {
     while (pend.length && pend[0].q <= m.ack) pend.shift();
-    let pm = acc.m, pn = acc.ln, pg = acc.lg;
-    pend.forEach(d => { pm += d.m; pn += d.ln; pg += d.lg; });
+    let pm = acc.m, pn = acc.ln, pg = acc.lg, qn = acc.gn, qg = acc.gg;
+    pend.forEach(d => { pm += d.m; pn += d.ln; pg += d.lg; qn += d.gn; qg += d.gg; });
     G.money = Math.max(0, m.e.money + pm); prev.m = G.money;
     ctx.applyEco(m.e);
     if (Array.isArray(m.r)) LC.Robots.netApply(m.r);
+    if (Array.isArray(m.g)) {
+      const g = m.g; MP.gdrv = g[6] || null;
+      GD.load.n = Math.max(0, g[4] + qn); GD.load.g = Math.max(0, g[5] + qg); prev.gn = GD.load.n; prev.gg = GD.load.g;
+      if (GD.owned) {
+        const mine = MP.gdrv === MP.id;
+        if (wantFly && mine && !GD.driving) ctx.enterGlider();
+        else if (wantFly && MP.gdrv && !mine) { wantFly = 0; UI.toast('Der Gleiter wird gerade geflogen (' + MP.nameOf(MP.gdrv) + ').', '', 3); }
+        else if (GD.driving && !mine && !wantFly) ctx.exitGlider();
+        if (!MP.gdrv && !GD.driving && !wantFly && (!gSeen || Math.hypot(GD.pos.x - g[0], GD.pos.z - g[2]) > 0.05)) GD.place(g[0], g[2], g[3]);
+        gSeen = true;
+      }
+    }
     const b = m.b; MP.drv = b[6] || null;
     const secCh = BG.sec !== b[5]; BG.sec = b[5];
     BG.load.n = Math.max(0, b[3] + pn); BG.load.g = Math.max(0, b[4] + pg); prev.ln = BG.load.n; prev.lg = BG.load.g;
@@ -322,6 +348,7 @@
     const p = MP.players[id]; if (!p) return;
     UI.toast(p.name + ' hat das Spiel verlassen', '', 4);
     if (MP.drv === id) { MP.drv = null; BG.busy = false; }
+    if (MP.gdrv === id) { MP.gdrv = null; GD.busy = false; }
     removePlayer(id); delete lastAck[id];
     N.toGuest(null, { t: 'ros', l: roster() }); pushWorld(); hud();
   }
@@ -331,8 +358,8 @@
   }
   function start(role, code, name) {
     MP.active = true; MP.host = role === 'host'; MP.guest = !MP.host; MP.code = code; MP.name = name; MP.ready = MP.host;
-    MP.id = MP.host ? 'H' : null; MP.myColor = 0; MP.drv = BG.driving ? 'H' : null;
-    lastRx = 0; ops = []; myOps = []; pend = []; seq = 0; acc = { m: 0, ln: 0, lg: 0, kg: 0, sold: 0 }; wantDrive = 0; syncT = 0; ownedSeen = false;
+    MP.id = MP.host ? 'H' : null; MP.myColor = 0; MP.drv = BG.driving ? 'H' : null; MP.gdrv = GD.driving ? 'H' : null; wantFly = 0; gSeen = false;
+    lastRx = 0; ops = []; myOps = []; pend = []; seq = 0; acc = { m: 0, ln: 0, lg: 0, gn: 0, gg: 0, kg: 0, sold: 0 }; wantDrive = 0; syncT = 0; ownedSeen = false;
     if (timer) clearInterval(timer);
     timer = setInterval(tick, 80);
     hud();
@@ -352,7 +379,7 @@
     if (timer) { clearInterval(timer); timer = null; }
     N.close();
     Object.keys(MP.players).forEach(removePlayer);
-    MP.active = MP.host = MP.guest = MP.ready = false; MP.drv = null; BG.busy = false; MP.code = '';
+    MP.active = MP.host = MP.guest = MP.ready = false; MP.drv = null; BG.busy = false; MP.gdrv = null; GD.busy = false; MP.code = '';
     hud();
   };
 
@@ -370,9 +397,20 @@
     if (MP.host) { if (MP.drv === 'H') MP.drv = null; pushWorld(); }
     else N.toHost({ t: 'bout', b: [BG.pos.x, BG.pos.z, BG.heading] });
   };
+  // Gleiter: wie beim Buggy – einer fliegt, der Gastgeber vergibt den Platz
   MP.gdrv = null;
-  MP.tryFly = function () { return true; };
-  MP.leftGlider = function () {};
+  MP.tryFly = function () {
+    if (!MP.active) return true;
+    if (MP.gdrv && MP.gdrv !== MP.id) { UI.toast('Der Gleiter wird gerade geflogen (' + MP.nameOf(MP.gdrv) + ').', '', 3); return false; }
+    if (MP.host) { MP.gdrv = 'H'; pushWorld(); return true; }
+    wantFly = performance.now(); N.toHost({ t: 'gin' }); return false;
+  };
+  MP.leftGlider = function () {
+    if (!MP.active) return;
+    wantFly = 0;
+    if (MP.host) { if (MP.gdrv === 'H') MP.gdrv = null; pushWorld(); }
+    else N.toHost({ t: 'gout', g: [GD.pos.x, GD.pos.z, GD.heading] });
+  };
   // Säcke
   MP.sackThrow = function (from, dir, n, g) { N.toHost({ t: 'sk+', p: [+from.x.toFixed(2), +from.y.toFixed(2), +from.z.toFixed(2)], d: [dir.x, dir.z], n, g }); };
   MP.sackAdded = function (s, from, dir) { if (MP.host) N.toGuest(null, { t: 'sk+', id: s.id, p: [from.x, from.y, from.z], d: [dir.x, dir.z], n: s.n, g: s.g }); };
@@ -393,6 +431,7 @@
     tickN++;
     const st = ctx.pstate(), m = { t: 'p', s: st };
     if (BG.driving && MP.drv === MP.id) m.b = [+BG.pos.x.toFixed(2), +BG.pos.z.toFixed(2), +BG.heading.toFixed(3), +BG.speed.toFixed(2), +BG.suck.toFixed(2)];
+    if (GD.driving && MP.gdrv === MP.id) m.g = [+GD.pos.x.toFixed(2), +GD.pos.y.toFixed(2), +GD.pos.z.toFixed(2), +GD.heading.toFixed(3), +GD.suck.toFixed(2)];
     if (MP.host) { m.id = 'H'; N.toGuest(null, m); } else N.toHost(m);
     if (ops.length) { send({ t: 'o', c: W.sec, o: ops }); ops = []; }
     if (MP.guest && myOps.length > 1500) myOps.splice(0, myOps.length - 1000);
@@ -406,10 +445,11 @@
     } else {
       if (lastRx && now - lastRx > 15000) { lost(); return; }
       if (wantDrive && performance.now() - wantDrive > 2500 && !BG.driving) wantDrive = 0;
-      if (Math.abs(acc.m) > 0.5 || Math.abs(acc.ln) + Math.abs(acc.lg) > 0.005 || acc.kg > 0.5 || acc.sold) {
-        const d = { t: 'd', q: ++seq, m: Math.round(acc.m), ln: +acc.ln.toFixed(3), lg: +acc.lg.toFixed(3), kg: +acc.kg.toFixed(2), sold: acc.sold };
-        pend.push({ q: d.q, m: d.m, ln: d.ln, lg: d.lg });
-        acc.m -= d.m; acc.ln -= d.ln; acc.lg -= d.lg; acc.kg = 0; acc.sold = 0;
+      if (wantFly && performance.now() - wantFly > 2500 && !GD.driving) wantFly = 0;
+      if (Math.abs(acc.m) > 0.5 || Math.abs(acc.ln) + Math.abs(acc.lg) + Math.abs(acc.gn) + Math.abs(acc.gg) > 0.005 || acc.kg > 0.5 || acc.sold) {
+        const d = { t: 'd', q: ++seq, m: Math.round(acc.m), ln: +acc.ln.toFixed(3), lg: +acc.lg.toFixed(3), gn: +acc.gn.toFixed(3), gg: +acc.gg.toFixed(3), kg: +acc.kg.toFixed(2), sold: acc.sold };
+        pend.push({ q: d.q, m: d.m, ln: d.ln, lg: d.lg, gn: d.gn, gg: d.gg });
+        acc.m -= d.m; acc.ln -= d.ln; acc.lg -= d.lg; acc.gn -= d.gn; acc.gg -= d.gg; acc.kg = 0; acc.sold = 0;
         N.toHost(d);
       }
     }
@@ -421,11 +461,15 @@
     if (MP.guest && MP.ready) {
       acc.m += G.money - prev.m; prev.m = G.money;
       acc.ln += BG.load.n - prev.ln; prev.ln = BG.load.n; acc.lg += BG.load.g - prev.lg; prev.lg = BG.load.g;
+      acc.gn += GD.load.n - prev.gn; prev.gn = GD.load.n; acc.gg += GD.load.g - prev.gg; prev.gg = GD.load.g;
       acc.kg += Math.max(0, G.stats.kg - prev.kg); prev.kg = G.stats.kg; acc.sold += Math.max(0, G.stats.sold - prev.sold); prev.sold = G.stats.sold;
     }
     const d = MP.drv, rp = d && d !== MP.id ? MP.players[d] : null;
     if (rp && rp.b && BG.here() && !BG.driving) { BG.busy = true; BG.remote(dt, rp.b[0], rp.b[1], rp.b[2], rp.b[3], rp.b[4]); }
     else if (BG.busy) { BG.busy = false; BG.speed = 0; BG.suck = 0; }
+    const gp = MP.gdrv && MP.gdrv !== MP.id ? MP.players[MP.gdrv] : null;
+    if (gp && gp.g && GD.owned && !GD.driving) { GD.busy = true; GD.remote(dt, gp.g[0], gp.g[1], gp.g[2], gp.g[3], gp.g[4]); }
+    else if (GD.busy) { GD.busy = false; GD.suck = 0; }
     updatePlayers(dt, time);
   };
   MP.TOOL_IDS = TOOL_IDS;

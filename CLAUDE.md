@@ -16,6 +16,7 @@ Spielplan (alle Entscheidungen des Nutzers): https://claude.ai/artifact/FeVhH9CZ
   - `lc-sacks.js` Staubsäcke (Taste G füllen und werfen, E aufheben, max. 2 tragen)
   - `lc-buggy.js` Mondbuggy (fahren, Saugkopf, 1.500 kg Laderaum, Schlauch für den Handsauger) und Fahrzeug-Entladestation
   - `lc-robots.js` Putzroboter (`UP.robot`, bis 4): suchen den nächsten Staub (`D.nearest`), saugen, liefern selbst ab; E einpacken, R absetzen
+  - `lc-glider.js` Schwebegleiter (fliegen, Saugrüssel, Laderaum, Mitflieger)
   - `lc-post.js` HDR, Bloom, Filmkurve (fällt ohne Float-Texturen auf direktes Zeichnen zurück)
   - `lc-audio.js` alle Töne und Musik live erzeugt (keine Audiodateien)
   - `lc-map.js` Minimap (dreht mit), große Karte (Taste M; Maus: verschieben, zoomen, Markierungen), Kanten-Monitore im Buggy
@@ -65,7 +66,9 @@ Spielplan (alle Entscheidungen des Nutzers): https://claude.ai/artifact/FeVhH9CZ
 - Putzroboter (seit 0.7.0): frei ab Sektor 1 blitzblank (`cond: 'sectorDone'`), arbeiten überall (Abgabe am Lager des Kraters, in dem sie stehen); im Mehrspieler rechnet sie der Gastgeber (`RB.net/netApply` in `w`), nur er packt sie ein.
 - Staub ist eine sichtbare Schicht: der Boden-Shader hebt staubige Stellen um `uThick` (0,24 m) an. Start-Animation: `#loading` in index.html (reines CSS).
 - Mitfahren im Buggy (Mehrspieler): `riding` in lc-main.js, Merker 16 im Spieler-Zustand; der Beifahrer hat den Bordsauger (saugt in den Laderaum).
-- Als Nächstes vom Nutzer gewünscht (11.11., offene Welt ist fertig): Schwebegleiter (kaufbar, Pilot + Mitflieger, einer putzt aus der Luft), Tag/Nacht und Mondstürme, Bau-Hammer mit Bau-Menü (u. a. Glasröhren, die Staub sichtbar zum Verkauf leiten).
+- Schwebegleiter (seit 0.10.0, `lc-glider.js`, `UP.glider`): Leertaste/C hoch/runter, Saugrüssel unter `SUCK_ALT` (Stärke `GD.pull()`), Laderaum, Entladen auf Landeplatz/Station. Mitflieger: `riding === 'glider'`.
+  Mehrspieler wie beim Buggy: `MP.gdrv`, Nachrichten `gin`/`gout`, Lage im Feld `g` der Spieler- und `w`-Nachricht, Merker 32 (fliegt) / 64 (fliegt mit).
+- Als Nächstes vom Nutzer gewünscht (12.11.): mehrere Spielstände zur Auswahl, Trailer-Video, Tag/Nacht und Mondstürme, Bau-Hammer mit Bau-Menü (u. a. Glasröhren, die Staub sichtbar zum Verkauf leiten).
 - Reihenfolge, die der Nutzer will: (Mehrspieler und Putzroboter sind fertig,) Automatisierung (Luftkanäle, Staubpresse, Drohnen), Rakete als echtes Ziel, eigene Gebäude an der Basis bauen.
 - Noch nicht gebaut (siehe Spielplan): Gleiter, Raumschiff, Luftkanäle, Staubpresse, Drohnen,
   Händler mit schwankenden Preisen, Hangar/Garage/Solarpark, Rakete als Spielziel, Handy-Steuerung.
