@@ -105,7 +105,7 @@
       if (driving) {
         // sitzt im Buggy
         const sh = Math.sin(BG.heading), ch = Math.cos(BG.heading);
-        av.root.position.set(BG.pos.x - ch * 0.38 + sh * 0.12, BG.pos.y + 0.78, BG.pos.z + sh * 0.38 + ch * 0.12); av.root.rotation.y = BG.heading;
+        av.root.position.set(BG.pos.x - ch * 0.38 + sh * 0.12, BG.pos.y + 0.48, BG.pos.z + sh * 0.38 + ch * 0.12); av.root.rotation.y = BG.heading;
         AV.pose(av, 'sit', 1, 10); av.body.rotation.x = 0;
         av.aL.g.rotation.set(1.15, 0, 0.12); av.aR.g.rotation.set(1.15, 0, -0.12); av.aL.fore.rotation.x = 0.35; av.aR.fore.rotation.x = 0.35;
         p.x = BG.pos.x; p.z = BG.pos.z; p.shadow.visible = false;

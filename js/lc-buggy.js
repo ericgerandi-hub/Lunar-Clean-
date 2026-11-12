@@ -13,10 +13,11 @@
   BG.station = BG.stations[1];
   BG.sec = 1;                  // in welchem Sektor der Buggy steht
   BG.headR = 2.2;              // Radius der Saugfläche
+  BG.TOP = 18;                 // Höchstgeschwindigkeit (m/s)
   BG.park = { x: 14.5, z: 17, heading: 2.5 };
   BG.HOSE_RANGE = 16;
   const HEAD_DIST = 2.35, RADIUS = 1.5;
-  let scene, car, wheels = [], fill, shadow, headL, hose, hoseMat, pitch = 0, roll = 0;
+  let scene, car, wheels = [], fill, shadow, headL, cabinL, hose, hoseMat, pitch = 0, roll = 0;   // cabinL = Material der Deckenleiste
   const tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3(), q1 = new THREE.Quaternion(), e1 = new THREE.Euler(0, 0, 0, 'YXZ');
   BG.headWorld = new THREE.Vector3(); BG.hopperWorld = new THREE.Vector3();
 
@@ -49,33 +50,65 @@
       add(box(0.5, 0.05, 1.2), mWhite, p[0], 1.14, p[1]);            // Schutzblech
       add(box(0.12, 0.3, 0.12), mDark, p[0] * 0.78, 0.7, p[1]);
     });
-    // Sitz, Lenkrad, Armaturen
+    // ---- Druckkabine: geschlossener Raum mit zwei Plaetzen, Fenstern und Armaturen ----
+    const mGlass = new THREE.MeshStandardMaterial({ color: 0xbfe2f5, roughness: 0.04, metalness: 0.2, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.FrontSide });
+    const mHull = mk(0xb4b0a7, 0.5, 0.25), mIn = mk(0x34373d, 0.85, 0.08);
+    mIn.emissive = new THREE.Color(0x20262e); mIn.emissiveIntensity = 1;   // Innenraum bleibt nachts lesbar
+    const Z0 = -1.08, Z1 = 0.56, HW = 0.86, FY = 0.95, RY = 2.36, CZ = (Z0 + Z1) / 2, CD = Z1 - Z0;
+    add(box(HW * 2, 0.07, CD), mIn, 0, FY + 0.035, CZ);                              // Kabinenboden
+    // Rueckwand mit kleinem Fenster zum Laderaum
+    add(box(HW * 2, 0.9, 0.09), mHull, 0, FY + 0.45, Z1);
+    add(box(HW * 2 - 0.16, 0.46, 0.05), mGlass, 0, FY + 1.13, Z1);
+    add(box(HW * 2, 0.07, 0.1), mOrange, 0, FY + 0.92, Z1);
+    [-1, 1].forEach(sg => {
+      add(box(0.08, 0.62, CD), mHull, sg * HW, FY + 0.31, CZ);                       // Tuerblech unten
+      add(box(0.05, 0.8, CD - 0.3), mGlass, sg * HW, FY + 1.05, CZ + 0.04);          // Seitenfenster
+      add(box(0.1, 0.07, CD), mOrange, sg * HW, FY + 0.65, CZ);                      // Zierstreifen
+      add(box(0.03, 1.34, 0.04), mDark, sg * (HW + 0.03), FY + 0.74, -0.14);         // Tuerfugen
+      add(box(0.03, 1.34, 0.04), mDark, sg * (HW + 0.03), FY + 0.74, 0.44);
+      add(box(0.07, 0.06, 0.3), mSteel, sg * (HW + 0.05), FY + 0.52, 0.2);           // Tuergriff
+      add(tube(1.4, 0.055), mSteel, sg * (HW - 0.01), 1.68, -0.93, 0.2);             // A-Saeule
+      add(tube(1.4, 0.05), mSteel, sg * (HW - 0.01), FY + 0.7, Z1 - 0.04);           // B-Saeule
+    });
+    add(box(HW * 2 - 0.1, 1.42, 0.05), mGlass, 0, 1.68, -0.93, 0.2);                 // Frontscheibe
+    add(box(HW * 2 + 0.06, 0.09, CD + 0.26), mHull, 0, RY, CZ - 0.06);               // Dach
+    add(box(HW * 2 + 0.1, 0.05, 0.16), mOrange, 0, RY + 0.07, Z0 + 0.06);
+    add(box(0.5, 0.05, 0.9), mDark, 0, RY + 0.07, CZ + 0.2);                         // Dachluke
     // zwei Sitze nebeneinander: links der Fahrer, rechts der Beifahrer am Bordsauger
     [-0.38, 0.38].forEach(x => {
-      add(box(0.56, 0.14, 0.6), mSeat, x, 1.02, 0.1);
-      add(box(0.56, 0.7, 0.14), mSeat, x, 1.36, 0.42, -0.12);
-      add(box(0.3, 0.16, 0.1), mSeat, x, 1.8, 0.47, -0.12);                       // Kopfstütze
-      add(box(0.5, 0.03, 0.5), mOrange, x, 1.095, 0.1);                           // Sitzpolster-Streifen
+      add(box(0.56, 0.14, 0.6), mSeat, x, 1.07, 0.1);
+      add(box(0.5, 0.03, 0.5), mOrange, x, 1.145, 0.1);
+      add(box(0.56, 0.74, 0.14), mSeat, x, 1.46, 0.42, -0.12);
+      add(box(0.3, 0.16, 0.1), mSeat, x, 1.88, 0.46, -0.12);                         // Kopfstuetze
+      [-0.26, 0.26].forEach(b => add(box(0.08, 0.26, 0.52), mSeat, x + b, 1.2, 0.12));// Seitenwangen
+      add(tube(0.56, 0.03), mOrange, x - 0.16, 1.4, 0.3, 0, 0, 0.5);                 // Gurt
     });
-    add(box(0.06, 0.2, 0.5), mDark, 0, 1.12, 0.1);                                 // Mittelkonsole
-    add(box(1.3, 0.34, 0.22), mDark, 0, 1.22, -0.66);
-    add(new THREE.TorusGeometry(0.19, 0.022, 8, 20), mRubber, -0.38, 1.42, -0.48, -0.5);
-    add(tube(0.3, 0.02), mSteel, -0.38, 1.36, -0.56, 1.05);
-    // Bordsauger vor dem Beifahrersitz: drehbarer Sockel, Saugrohr nach vorn, Schlauch zum Laderaum
-    add(new THREE.CylinderGeometry(0.11, 0.14, 0.34, 12), mDark, 0.42, 1.52, -0.66);
-    add(new THREE.SphereGeometry(0.15, 14, 10), mOrange, 0.42, 1.74, -0.66);
-    add(new THREE.CylinderGeometry(0.075, 0.095, 0.95, 12), mSteel, 0.42, 1.78, -1.12, Math.PI / 2 - 0.08);
-    add(new THREE.CylinderGeometry(0.15, 0.1, 0.2, 14), mDark, 0.42, 1.82, -1.66, Math.PI / 2 - 0.08);
-    add(new THREE.TorusGeometry(0.15, 0.025, 8, 18), new THREE.MeshStandardMaterial({ color: 0, emissive: 0x4fe3ff, emissiveIntensity: 1.4 }), 0.42, 1.826, -1.75, -0.08);
-    add(tube(0.34, 0.02), mSteel, 0.3, 1.66, -0.5, 1.2); add(tube(0.34, 0.02), mSteel, 0.54, 1.66, -0.5, 1.2);      // zwei Griffe
-    add(tube(0.26, 0.022), mRubber, 0.42, 1.6, -0.36, 0, 0, Math.PI / 2);
-    { const hc = new THREE.CatmullRomCurve3([new THREE.Vector3(0.52, 1.72, -0.6), new THREE.Vector3(0.76, 1.95, -0.2), new THREE.Vector3(0.8, 2.3, 0.45), new THREE.Vector3(0.6, 2.05, 0.95), new THREE.Vector3(0.45, 1.75, 1.2)]);
+    add(box(0.26, 0.26, 0.56), mIn, 0, 1.12, 0.14);                                  // Mittelkonsole
+    add(box(0.16, 0.1, 0.2), mSteel, 0, 1.3, -0.08);                                 // Schalthebel
+    // Armaturenbrett mit Bildschirmen
+    add(box(HW * 2 - 0.1, 0.34, 0.34), mIn, 0, 1.3, -0.94);
+    add(box(HW * 2 - 0.16, 0.06, 0.3), mDark, 0, 1.49, -0.93);
+    const mScr = new THREE.MeshStandardMaterial({ color: 0, emissive: 0x4fe3ff, emissiveIntensity: 0.8 });
+    add(box(0.42, 0.2, 0.02), mScr, -0.38, 1.36, -0.775, -0.3);
+    add(box(0.34, 0.16, 0.02), mScr, 0.4, 1.34, -0.775, -0.3);
+    add(new THREE.TorusGeometry(0.19, 0.024, 8, 20), mRubber, -0.38, 1.46, -0.66, -0.45);  // Lenkrad
+    add(tube(0.3, 0.02), mSteel, -0.38, 1.4, -0.74, 1.1);
+    // Bordsauger: Steuerknueppel innen beim Beifahrer, Arm aussen an der rechten Flanke
+    add(new THREE.CylinderGeometry(0.07, 0.09, 0.16, 10), mDark, 0.6, 1.2, -0.2);
+    add(tube(0.3, 0.025), mSteel, 0.6, 1.36, -0.2, 0.25);
+    add(new THREE.SphereGeometry(0.06, 10, 8), mOrange, 0.63, 1.5, -0.24);
+    add(new THREE.CylinderGeometry(0.12, 0.15, 0.3, 12), mDark, HW + 0.12, 1.3, -0.3);
+    add(new THREE.SphereGeometry(0.14, 14, 10), mOrange, HW + 0.12, 1.5, -0.3);
+    add(new THREE.CylinderGeometry(0.075, 0.095, 1.1, 12), mSteel, HW + 0.12, 1.42, -0.95, 0.45);
+    add(new THREE.CylinderGeometry(0.16, 0.1, 0.2, 14), mDark, HW + 0.12, 1.15, -1.46, 0.45);
+    add(new THREE.TorusGeometry(0.16, 0.025, 8, 18), new THREE.MeshStandardMaterial({ color: 0, emissive: 0x4fe3ff, emissiveIntensity: 1.4 }), HW + 0.12, 1.11, -1.53, 1.1);
+    { const hc = new THREE.CatmullRomCurve3([new THREE.Vector3(HW + 0.12, 1.5, -0.28), new THREE.Vector3(HW + 0.2, 1.95, 0.1), new THREE.Vector3(HW + 0.1, 2.15, 0.7), new THREE.Vector3(0.74, 1.95, 1.1), new THREE.Vector3(0.6, 1.75, 1.25)]);
       add(new THREE.TubeGeometry(hc, 24, 0.05, 8), mRubber, 0, 0, 0); }
-    add(box(0.2, 0.09, 0.02), new THREE.MeshStandardMaterial({ color: 0, emissive: 0x4fe3ff, emissiveIntensity: 0.7 }), -0.4, 1.34, -0.545, -0.25);
-    // Überrollkäfig
-    [[-0.78, -0.62], [0.78, -0.62], [-0.78, 0.7], [0.78, 0.7]].forEach(p => add(tube(1.75), mSteel, p[0], 1.76, p[1]));
-    add(tube(1.56), mSteel, 0, 2.62, -0.62, 0, 0, Math.PI / 2); add(tube(1.56), mSteel, 0, 2.62, 0.7, 0, 0, Math.PI / 2);
-    add(tube(1.32), mSteel, -0.78, 2.62, 0.04, Math.PI / 2); add(tube(1.32), mSteel, 0.78, 2.62, 0.04, Math.PI / 2);
+    // Innenlicht: leuchtende Deckenleiste (kostet keine zusaetzliche Lichtquelle)
+    cabinL = new THREE.MeshStandardMaterial({ color: 0x14161a, emissive: 0xdce8ff, emissiveIntensity: 0.5 });
+    add(box(0.62, 0.05, 0.2), cabinL, 0, RY - 0.08, CZ);
+    add(box(0.14, 0.04, 0.5), cabinL, -0.62, RY - 0.08, CZ + 0.1);
+    add(box(0.14, 0.04, 0.5), cabinL, 0.62, RY - 0.08, CZ + 0.1);
     // Laderaum hinten
     add(box(1.7, 0.08, 1.3), mYellow, 0, 0.95, 1.3);
     add(box(0.08, 0.95, 1.3), mYellow, -0.85, 1.42, 1.3); add(box(0.08, 0.95, 1.3), mYellow, 0.85, 1.42, 1.3);
@@ -98,7 +131,8 @@
     headL = new THREE.SpotLight(0xfff0d8, 0, 34, 0.7, 0.7, 1.2); headL.position.set(0, 1.3, -1.6); headL.target.position.set(0, 0.2, -9);
     car.add(headL); car.add(headL.target);
     BG.beaconMat = new THREE.MeshStandardMaterial({ color: 0, emissive: 0xffa020, emissiveIntensity: 2 });
-    add(new THREE.SphereGeometry(0.07, 10, 8), BG.beaconMat, 0.78, 2.72, 0.7);
+    add(new THREE.CylinderGeometry(0.05, 0.06, 0.16, 8), mSteel, 0.6, 2.47, 0.2);     // Sockel auf dem Dach
+    add(new THREE.CylinderGeometry(0.09, 0.09, 0.12, 12), BG.beaconMat, 0.6, 2.61, 0.2);
     car.traverse(o => { if (o.isMesh) { o.receiveShadow = true; } });
     car.visible = false;
     scene.add(car);
@@ -198,11 +232,12 @@
     BG.lookYaw = U.clamp(BG.lookYaw - inp.mdx * 0.0022 * inp.sens, -2.5, 2.5);
     BG.lookPitch = U.clamp(BG.lookPitch - inp.mdy * 0.0022 * inp.sens, -1.1, 1.2);
     // Gas, Bremse, Lenkung
-    if (inp.f > 0) BG.speed += (BG.speed < 0 ? 14 : 6.5) * dt;
-    else if (inp.f < 0) BG.speed -= (BG.speed > 0 ? 14 : 4.5) * dt;
-    else BG.speed -= BG.speed * Math.min(1, dt * 1.6);
-    BG.speed = U.clamp(BG.speed, -4, 10.5);
-    const grip = U.clamp(BG.speed / 3.5, -1, 1);
+    if (inp.f > 0) BG.speed += (BG.speed < 0 ? 20 : 9.5) * dt;
+    else if (inp.f < 0) BG.speed -= (BG.speed > 0 ? 20 : 6) * dt;
+    else BG.speed -= BG.speed * Math.min(1, dt * 1.4);
+    BG.speed = U.clamp(BG.speed, -6, BG.TOP);
+    // bei hohem Tempo weniger Lenkeinschlag, damit er nicht ausbricht
+    const grip = U.clamp(BG.speed / 3.5, -1, 1) * (1 - 0.42 * U.clamp((Math.abs(BG.speed) - 7) / 11, 0, 1));
     BG.heading -= inp.s * 1.55 * grip * dt;
     const sh = Math.sin(BG.heading), ch = Math.cos(BG.heading), p = BG.pos;
     p.x += -sh * BG.speed * dt; p.z += -ch * BG.speed * dt;
@@ -245,7 +280,8 @@
     for (let i = 0; i < 4; i++) wheels[i].rotation.x -= speed * dt / 0.54;
   };
 
-  BG.applyCamera = function (cam) {
+  BG.applyCamera = function (cam, outside) {
+    if (outside) { LC.chase(cam, BG.pos, BG.heading + BG.lookYaw, BG.lookPitch, 7.6, 1.6); return; }
     tmp.set(-0.38, 2.02, -0.02).applyMatrix4(car.matrixWorld); cam.position.copy(tmp);
     e1.set(BG.lookPitch, BG.lookYaw, 0); q1.setFromEuler(e1);
     cam.quaternion.copy(car.quaternion).multiply(q1);
@@ -259,6 +295,7 @@
     fill.material.color.setRGB(0.10, U.lerp(0.085, 0.2, gr), U.lerp(0.07, 0.4, gr));
     const on = BG.driving || BG.busy;
     headL.intensity = on ? 0.5 + 2.2 * dark : 0;
+    if (cabinL) cabinL.emissiveIntensity = on ? 1.4 + 1.6 * dark : 0.35;
     BG.beaconMat.emissiveIntensity = on ? ((t * 1.4) % 1 < 0.5 ? 3 : 0.2) : 0.2;
     const gr8 = BG.station.grate;
     if (gr8) gr8.material.opacity += ((BG.unloading ? 0.5 + 0.3 * Math.sin(t * 20) : 0) - gr8.material.opacity) * Math.min(1, dt * 8);

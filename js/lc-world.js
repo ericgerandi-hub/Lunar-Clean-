@@ -683,5 +683,14 @@
     W.earth.userData.spin.rotation.y = 2.2 + t * 0.004;
   };
 
+  // Aussenansicht: Kamera hinter einem Fahrzeug oder der Figur
+  LC.chase = function (cam, pos, yaw, pitch, dist, lookUp) {
+    const p = Math.max(-1, Math.min(0.9, pitch)), d = dist * Math.cos(p * 0.55), up = lookUp || 1.4;
+    const cx = pos.x + Math.sin(yaw) * d, cz = pos.z + Math.cos(yaw) * d;
+    const cy = Math.max(W.heightAt(cx, cz) + 0.7, pos.y + up + dist * 0.22 - p * dist * 0.95);
+    cam.position.set(cx, cy, cz); cam.rotation.set(0, 0, 0); cam.up.set(0, 1, 0);
+    cam.lookAt(pos.x, pos.y + up, pos.z);
+  };
+
   LC.World = W;
 })(window.LC);

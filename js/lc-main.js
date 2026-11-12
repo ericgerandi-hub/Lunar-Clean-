@@ -4,7 +4,7 @@
    ========================================================= */
 (function (LC) {
   const U = LC.U, W = LC.World, D = LC.Dust, B = LC.Base, PL = LC.Player, V = LC.Vacuum, P = LC.Post, A = LC.Audio, UI = LC.UI, SK = LC.Sacks, BG = LC.Buggy, AV = LC.Avatar, GL = LC.Globe, CS = LC.Cutscene, MP = LC.MP, RB = LC.Robots, GD = LC.Glider, BD = LC.Build;
-  const VERSION = '0.13.1';                 // nach jeder Änderung hochzählen
+  const VERSION = '0.14.0';                 // nach jeder Änderung hochzählen
   const SAVE_KEY = 'lunarclean_save_v1', SET_KEY = 'lunarclean_settings_v1';
   const DONE_AT = 0.9995;                  // Sektor gilt erst als fertig, wenn die Anzeige 100 % zeigt
   const PRICE_N = 2, PRICE_G = 15;         // ¢ pro kg: normaler Staub / Glitzerstaub
@@ -36,7 +36,7 @@
       desc: 'Leertaste in der Luft gedrückt halten und abheben.' },
     fuel: { name: 'Jetpack-Treibstoff', max: 2, costs: [400, 1200], vals: [3.2, 5.5, 9], needs: 'jet',
       desc: 'Länger in der Luft bleiben.', fmt: v => UI.n1(v) + ' s Schub' },
-    buggy: { help: ["Der Buggy steht neben der Basis. Mit E steigst du ein und wieder aus.", "Fahren: W und S für Gas und Bremse, A und D zum Lenken, mit der Maus umsehen.", "Saugen: Linke Maustaste halten. Der Saugkopf vorn putzt eine über 4 m breite Spur direkt in den Laderaum (1.500 kg).", "Die zwei Bildschirme links und rechts zeigen die Saugkante. Die orange Linie ist das Ende deiner Spur – so fährst du Bahn an Bahn.", "Schlauch: Arbeitest du zu Fuß mit dem Sauger näher als 16 m am Buggy, geht der Staub direkt in den Buggy statt in deinen kleinen Behälter. Unten links steht dann „Buggy-Laderaum“.", "Säcke lädt der Buggy im Vorbeifahren von allein ein.", "Entladen: auf die gelb markierte Fahrzeug-Entladung neben dem Staublager fahren und E drücken."],
+    buggy: { help: ["Der Buggy steht neben der Basis. Mit E steigst du ein und wieder aus – du sitzt in einer geschlossenen Druckkabine.", "Fahren: W und S für Gas und Bremse, A und D zum Lenken, mit der Maus umsehen. Er fährt bis 18 m/s; bei hohem Tempo lenkt er ruhiger.", "Mit V schaltest du auf Außenansicht um und siehst den Buggy von hinten.", "Saugen: Linke Maustaste halten. Der Saugkopf vorn putzt eine über 4 m breite Spur direkt in den Laderaum (1.500 kg).", "Die zwei Bildschirme links und rechts zeigen die Saugkante. Die orange Linie ist das Ende deiner Spur – so fährst du Bahn an Bahn.", "Schlauch: Arbeitest du zu Fuß mit dem Sauger näher als 16 m am Buggy, geht der Staub direkt in den Buggy statt in deinen kleinen Behälter. Unten links steht dann „Buggy-Laderaum“.", "Säcke lädt der Buggy im Vorbeifahren von allein ein.", "Entladen: auf die gelb markierte Fahrzeug-Entladung neben dem Staublager fahren und E drücken."],
       name: 'Mondbuggy', max: 1, costs: [6000], needs: 'repair',
       desc: 'Fahren statt laufen: breiter Saugkopf vorn, 1.500 kg Laderaum, lädt Säcke ein. Mit Schlauch für deinen Handsauger. Entladen an der Fahrzeug-Station.' }
   };
@@ -54,7 +54,7 @@
     help: ['Mit B öffnest du das Bau-Menü. Mit den Zahlentasten wählst du, was du bauen willst – manches musst du dort erst einmal freischalten.', 'Dann zeigst du auf den Boden vor dir: Blau heißt „hier geht es“, Rot heißt „hier nicht“. Linke Maustaste baut, B oder die rechte Maustaste hört auf.', 'Glasröhre mit Einwurf: Stell den Einwurf dorthin, wo du gerade putzt. Die Röhre führt von selbst zum Staublager (in Sektor 2 zum Außenposten). Am Einwurf drückst du E – dein Staub wandert sichtbar durch das Glas und wird am Ende automatisch verkauft. Das geht auch mit dem Buggy.', 'Lichtmast: Putzroboter arbeiten im Dunkeln nicht. Setzt du sie im gelben Kreis eines Lichtmasts ab, putzen sie auch nachts – aber nur im Licht.', 'Signalbake: Roboter, die du in ihrem blauen Kreis absetzt, putzen nur innerhalb dieses Kreises. So schickst du sie genau dorthin, wo du sie haben willst.', 'Staubpresse: Gib mit E Staub hinein (auch die Buggy-Ladung). Sie presst ihn zu Ballen, etwa 9 kg pro Sekunde. Die Presse verkauft nichts: Hol die Ballen mit E ab (zu Fuß zwei auf einmal, mit dem Buggy alle) und bring sie selbst zum Staublager oder kipp sie in den Einwurf einer Glasröhre. Ballen sind 50 % mehr wert als loser Staub.', 'Die Kreise am Boden und auf der Karte zeigen immer, wie weit Lichtmast und Bake reichen.', 'Abreißen (im Bau-Menü): Du bekommst den halben Preis zurück.'],
     desc: 'Bau deine eigene Basis: Glasröhren, die deinen Staub von überall zum Verkauf leiten, Lichtmasten für die Nacht und Signalbaken.' };
   UP.glider = { name: 'Schwebegleiter', max: 1, costs: [30000], needs: 'tunnel',
-    help: ['Der Gleiter steht auf dem Landeplatz neben der Basis. Mit E steigst du ein.', 'Fliegen: Leertaste hebt ab und steigt, C sinkt. W und S geben Schub, A und D drehen, mit der Maus siehst du dich um.', 'Er fliegt über beide Krater und den Pass – so bist du in Sekunden drüben. Aussteigen geht nur gelandet (mit C ganz runter, dann E).', 'Putzen aus der Luft: Unter dem Bauch hängt ein Saugrüssel. Flieg tiefer als 9 m und halte die linke Maustaste – je tiefer, desto stärker saugt er. Alles landet im Laderaum (2.500 kg).', 'Zu zweit: Fliegt dein Freund, drückst du am Gleiter E und fliegst mit. Dann bedienst du den großen Saugrüssel und zielst mit der Maus – viel breiter als der Pilot allein.', 'Entladen: auf dem Landeplatz oder einer Fahrzeug-Station landen und E drücken.'],
+    help: ['Der Gleiter steht auf dem Landeplatz neben der Basis. Mit E steigst du ein.', 'Fliegen: Leertaste hebt ab und steigt, C sinkt. W und S geben Schub, A und D drehen, mit der Maus siehst du dich um.', 'Er fliegt über beide Krater und den Pass – so bist du in Sekunden drüben. Aussteigen geht nur gelandet (mit C ganz runter, dann E).', 'Putzen aus der Luft: Unter dem Bauch hängt ein Saugrüssel. Flieg tiefer als 9 m und halte die linke Maustaste – je tiefer, desto stärker saugt er. Alles landet im Laderaum (2.500 kg).', 'Zu zweit: Fliegt dein Freund, drückst du am Gleiter E und fliegst mit. Dann bedienst du den großen Saugrüssel und zielst mit der Maus – viel breiter als der Pilot allein.', 'Entladen: auf dem Landeplatz oder einer Fahrzeug-Station landen und E drücken.', 'Mit V schaltest du auf Außenansicht um und siehst den Gleiter von hinten.'],
     desc: 'Fliegen statt fahren: schwebt über beide Krater, hat einen Saugrüssel zum Putzen aus der Luft und 2.500 kg Laderaum. Platz für Mitflieger.' };
   const UP_ORDER = ['shovel', 'vac', 'repair', 'width', 'power', 'tank', 'xl', 'jet', 'fuel', 'buggy', 'bcap', 'bhead', 'tunnel', 'hammer', 'glider', 'robot'];
   const inVeh = () => BG.driving || GD.driving;
@@ -506,6 +506,7 @@
           case 'KeyE': interact(); break;
           case 'KeyG': sackKey(); break;
           case 'KeyR': placeRobot(); break;
+          case 'KeyV': toggleView(); break;
           case 'KeyB': if (G.up.hammer && !inVeh() && !riding) { if (buildSel || buildMenu) { setBuild(null); setBuildMenu(false); } else setBuildMenu(true); } break;
           case 'KeyF': lampOn = !lampOn; A.play('click'); break;
           case 'KeyM': openMap(); break;
@@ -1094,6 +1095,15 @@
   // Presse/Roehre: der Gastgeber besitzt den Inhalt, Gaeste schicken nur Anfragen
   function bDeposit(b, n, g) { if (MP.guest) MP.build({ a: 'dep', id: b.id, n: +n.toFixed(2), g: +g.toFixed(2) }); else BD.deposit(b, n, g); }
   function bTake(b, kg) { const r = BD.takeBales(b, kg); if (MP.guest) MP.build({ a: 'take', id: b.id, kg: +kg.toFixed(2) }); return r; }
+  // Aussenansicht (Taste V): Kamera hinter Fahrzeug oder Figur
+  let outView = false, walkPh = 0;
+  function toggleView() {
+    outView = !outView;
+    if (!outView) { avatar.root.visible = false; camera.up.set(0, 1, 0); }
+    A.play('click');
+    UI.toast(outView ? 'Außenansicht – <kbd>V</kbd> zurück in die Innenansicht' : 'Innenansicht', '', 2.2);
+  }
+  LC.debug_view = () => outView;
   function tubeArrive(n, g) { if (MP.guest) { tubeT = 1.2; return; } const v = Math.round(n * PRICE_N + g * PRICE_G); if (v > 0) { G.money += v; G.stats.earned += v; tubePaid += v; tubeT = 1.2; } }
   let tubePaid = 0, tubeT = 0;
   function updateBuild(dt) {
@@ -1187,7 +1197,7 @@
     update(dt);
     if (shadowFrames > 0) { shadowFrames--; renderer.shadowMap.needsUpdate = true; }
     if (state === 'globe' || (state === 'cut' && CS.view === 'globe')) P.render(renderer, GL.scene, GL.camera, null, null, time);
-    else P.render(renderer, scene, camera, state === 'menu' || state === 'cut' || emote ? null : V.scene, V.camera, time);
+    else P.render(renderer, scene, camera, state === 'menu' || state === 'cut' || emote || outView ? null : V.scene, V.camera, time);
   }
 
   function update(dt) {
@@ -1203,7 +1213,7 @@
         if (selling) { ginp.f = ginp.s = 0; ginp.up = Math.min(0, ginp.up); }
         ginp.fire = fire && !selling; ginp.mdx = PL.mdx; ginp.mdy = PL.mdy; ginp.sens = PL.sens; PL.mdx = PL.mdy = 0; PL.lookDX = PL.lookDY = 0;
         GD.drive(dt, ginp, gcb);
-        GD.update(dt, time); GD.applyCamera(camera); camera.updateMatrixWorld();
+        GD.update(dt, time); GD.applyCamera(camera, outView); camera.updateMatrixWorld(); if (avatar.root.visible) avatar.root.visible = false;
         PL.pos.copy(GD.pos); PL.vel.set(0, 0, 0); PL.onGround = true; PL.jetting = false; PL.atLimit = GD.atLimit; PL.yaw = GD.heading;
         A.setJet(0); A.setBuggy(true, 2 + GD.speed * 0.45);
       } else if (driving) {
@@ -1212,7 +1222,7 @@
         if (selling) { binp.f = 0; binp.s = 0; }
         binp.fire = fire && !selling; binp.mdx = PL.mdx; binp.mdy = PL.mdy; binp.sens = PL.sens; PL.mdx = PL.mdy = 0; PL.lookDX = PL.lookDY = 0;
         BG.drive(dt, binp, bcb);
-        BG.applyCamera(camera); camera.updateMatrixWorld();
+        BG.applyCamera(camera, outView); camera.updateMatrixWorld(); if (avatar.root.visible) avatar.root.visible = false;
         PL.pos.copy(BG.pos); PL.vel.set(0, 0, 0); PL.onGround = true; PL.jetting = false; PL.atLimit = BG.atLimit; PL.yaw = BG.heading;
         A.setJet(0); A.setBuggy(true, Math.abs(BG.speed));
         LC.Map.edges(dt, BG.pos.x, BG.pos.z, BG.heading, 2.35, BG.headR, BG.suck > 0.2);
@@ -1243,7 +1253,7 @@
           if (!BG.here()) stopRide(true);
           else {      // sitzt rechts neben dem Fahrer und fährt mit
             const ch = Math.cos(BG.heading), sh = Math.sin(BG.heading);
-            PL.pos.set(BG.pos.x + ch * 0.38 + sh * 0.12, BG.pos.y + 0.72, BG.pos.z - sh * 0.38 + ch * 0.12); PL.vel.set(0, 0, 0); PL.onGround = true; PL.jetting = false;
+            PL.pos.set(BG.pos.x + ch * 0.38 + sh * 0.12, BG.pos.y + 0.32, BG.pos.z - sh * 0.38 + ch * 0.12); PL.vel.set(0, 0, 0); PL.onGround = true; PL.jetting = false;
           }
         } else if (BG.here()) {     // nicht durch den geparkten Buggy laufen
           const dx = PL.pos.x - BG.pos.x, dz = PL.pos.z - BG.pos.z, d2 = dx * dx + dz * dz, rr = 1.95;
@@ -1256,7 +1266,14 @@
           const a = PL.yaw + 0.45 + emote.t * 0.16, cx = PL.pos.x - Math.sin(a) * 3.6, cz = PL.pos.z - Math.cos(a) * 3.6;
           camera.position.set(cx, Math.max(B.groundAt(cx, cz) + 0.5, PL.pos.y + 1.55), cz);
           camera.rotation.set(0, 0, 0); camera.lookAt(PL.pos.x, PL.pos.y + 1.15, PL.pos.z);
-        } else PL.applyCamera(camera);
+        } else if (outView && !riding) {
+          // Aussenansicht zu Fuss: eigene Figur zeigen
+          const sp = Math.hypot(PL.vel.x, PL.vel.z);
+          walkPh += dt * (3 + sp * 1.2);
+          avatar.root.visible = true; avatar.root.position.copy(PL.pos); avatar.root.rotation.y = PL.yaw;
+          AV.walk(avatar, walkPh, PL.onGround ? Math.min(1, sp / 4) : 0.15);
+          LC.chase(camera, PL.pos, PL.yaw, PL.pitch, 4.6, 1.3);
+        } else { if (!outView && avatar.root.visible && !emote) avatar.root.visible = false; PL.applyCamera(camera); }
         camera.updateMatrixWorld();
         A.setJet(PL.jetting ? 1 : 0);
         if (PL.jetting && Math.random() < dt * 40) V.spawn(PL.pos.x + (Math.random() - 0.5) * 0.3, PL.pos.y + 0.9, PL.pos.z + (Math.random() - 0.5) * 0.3,

@@ -165,8 +165,9 @@
     tilt += ((GD.alt > 0.3 ? -GD.speed * 0.012 : 0) - tilt) * Math.min(1, dt * 4); roll += (dh * 1.5 - roll) * Math.min(1, dt * 4);
   };
 
-  GD.applyCamera = function (cam) {
+  GD.applyCamera = function (cam, outside) {
     root.updateMatrixWorld(true);
+    if (outside) { LC.chase(cam, GD.pos, GD.heading + GD.lookYaw, GD.lookPitch, 8.5, 1.6); return; }
     tmp.set(-0.36, 1.78, -0.62).applyMatrix4(craft.matrixWorld); cam.position.copy(tmp);
     e1.set(GD.lookPitch, GD.lookYaw, 0); q1.setFromEuler(e1);
     cam.quaternion.copy(root.quaternion).multiply(q1);
