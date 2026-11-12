@@ -4,7 +4,7 @@
    ========================================================= */
 (function (LC) {
   const U = LC.U, W = LC.World, D = LC.Dust, B = LC.Base, PL = LC.Player, V = LC.Vacuum, P = LC.Post, A = LC.Audio, UI = LC.UI, SK = LC.Sacks, BG = LC.Buggy, AV = LC.Avatar, GL = LC.Globe, CS = LC.Cutscene, MP = LC.MP, RB = LC.Robots, GD = LC.Glider, BD = LC.Build;
-  const VERSION = '0.12.1';                 // nach jeder Änderung hochzählen
+  const VERSION = '0.12.2';                 // nach jeder Änderung hochzählen
   const SAVE_KEY = 'lunarclean_save_v1', SET_KEY = 'lunarclean_settings_v1';
   const DONE_AT = 0.9995;                  // Sektor gilt erst als fertig, wenn die Anzeige 100 % zeigt
   const PRICE_N = 2, PRICE_G = 15;         // ¢ pro kg: normaler Staub / Glitzerstaub
@@ -1204,7 +1204,7 @@
           if (!BG.here()) stopRide(true);
           else {      // sitzt rechts neben dem Fahrer und fährt mit
             const ch = Math.cos(BG.heading), sh = Math.sin(BG.heading);
-            PL.pos.set(BG.pos.x + ch * 0.62 + sh * 0.25, BG.pos.y + 0.72, BG.pos.z - sh * 0.62 + ch * 0.25); PL.vel.set(0, 0, 0); PL.onGround = true; PL.jetting = false;
+            PL.pos.set(BG.pos.x + ch * 0.38 + sh * 0.12, BG.pos.y + 0.72, BG.pos.z - sh * 0.38 + ch * 0.12); PL.vel.set(0, 0, 0); PL.onGround = true; PL.jetting = false;
           }
         } else if (BG.here()) {     // nicht durch den geparkten Buggy laufen
           const dx = PL.pos.x - BG.pos.x, dz = PL.pos.z - BG.pos.z, d2 = dx * dx + dz * dz, rr = 1.95;

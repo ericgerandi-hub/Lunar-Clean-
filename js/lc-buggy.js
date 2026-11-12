@@ -50,11 +50,27 @@
       add(box(0.12, 0.3, 0.12), mDark, p[0] * 0.78, 0.7, p[1]);
     });
     // Sitz, Lenkrad, Armaturen
-    add(box(0.62, 0.14, 0.6), mSeat, 0, 1.02, 0.1);
-    add(box(0.62, 0.7, 0.14), mSeat, 0, 1.36, 0.42, -0.12);
+    // zwei Sitze nebeneinander: links der Fahrer, rechts der Beifahrer am Bordsauger
+    [-0.38, 0.38].forEach(x => {
+      add(box(0.56, 0.14, 0.6), mSeat, x, 1.02, 0.1);
+      add(box(0.56, 0.7, 0.14), mSeat, x, 1.36, 0.42, -0.12);
+      add(box(0.3, 0.16, 0.1), mSeat, x, 1.8, 0.47, -0.12);                       // Kopfstütze
+      add(box(0.5, 0.03, 0.5), mOrange, x, 1.095, 0.1);                           // Sitzpolster-Streifen
+    });
+    add(box(0.06, 0.2, 0.5), mDark, 0, 1.12, 0.1);                                 // Mittelkonsole
     add(box(1.3, 0.34, 0.22), mDark, 0, 1.22, -0.66);
-    add(new THREE.TorusGeometry(0.19, 0.022, 8, 20), mRubber, 0, 1.42, -0.48, -0.5);
-    add(tube(0.3, 0.02), mSteel, 0, 1.36, -0.56, 1.05);
+    add(new THREE.TorusGeometry(0.19, 0.022, 8, 20), mRubber, -0.38, 1.42, -0.48, -0.5);
+    add(tube(0.3, 0.02), mSteel, -0.38, 1.36, -0.56, 1.05);
+    // Bordsauger vor dem Beifahrersitz: drehbarer Sockel, Saugrohr nach vorn, Schlauch zum Laderaum
+    add(new THREE.CylinderGeometry(0.11, 0.14, 0.34, 12), mDark, 0.42, 1.52, -0.66);
+    add(new THREE.SphereGeometry(0.15, 14, 10), mOrange, 0.42, 1.74, -0.66);
+    add(new THREE.CylinderGeometry(0.075, 0.095, 0.95, 12), mSteel, 0.42, 1.78, -1.12, Math.PI / 2 - 0.08);
+    add(new THREE.CylinderGeometry(0.15, 0.1, 0.2, 14), mDark, 0.42, 1.82, -1.66, Math.PI / 2 - 0.08);
+    add(new THREE.TorusGeometry(0.15, 0.025, 8, 18), new THREE.MeshStandardMaterial({ color: 0, emissive: 0x4fe3ff, emissiveIntensity: 1.4 }), 0.42, 1.826, -1.75, -0.08);
+    add(tube(0.34, 0.02), mSteel, 0.3, 1.66, -0.5, 1.2); add(tube(0.34, 0.02), mSteel, 0.54, 1.66, -0.5, 1.2);      // zwei Griffe
+    add(tube(0.26, 0.022), mRubber, 0.42, 1.6, -0.36, 0, 0, Math.PI / 2);
+    { const hc = new THREE.CatmullRomCurve3([new THREE.Vector3(0.52, 1.72, -0.6), new THREE.Vector3(0.76, 1.95, -0.2), new THREE.Vector3(0.8, 2.3, 0.45), new THREE.Vector3(0.6, 2.05, 0.95), new THREE.Vector3(0.45, 1.75, 1.2)]);
+      add(new THREE.TubeGeometry(hc, 24, 0.05, 8), mRubber, 0, 0, 0); }
     add(box(0.2, 0.09, 0.02), new THREE.MeshStandardMaterial({ color: 0, emissive: 0x4fe3ff, emissiveIntensity: 0.7 }), -0.4, 1.34, -0.545, -0.25);
     // Überrollkäfig
     [[-0.78, -0.62], [0.78, -0.62], [-0.78, 0.7], [0.78, 0.7]].forEach(p => add(tube(1.75), mSteel, p[0], 1.76, p[1]));
@@ -230,7 +246,7 @@
   };
 
   BG.applyCamera = function (cam) {
-    tmp.set(0, 2.02, -0.02).applyMatrix4(car.matrixWorld); cam.position.copy(tmp);
+    tmp.set(-0.38, 2.02, -0.02).applyMatrix4(car.matrixWorld); cam.position.copy(tmp);
     e1.set(BG.lookPitch, BG.lookYaw, 0); q1.setFromEuler(e1);
     cam.quaternion.copy(car.quaternion).multiply(q1);
   };
