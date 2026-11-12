@@ -158,7 +158,7 @@
 
   // ---------- Verbindung ----------
   const send = d => { if (MP.host) N.toGuest(null, d); else N.toHost(d); };
-  const eco = () => ({ money: G.money, up: G.up, stats: G.stats, stage: G.stage, ph: +G.clock.toFixed(5), day: G.day, st: G.stormLeft > 0 ? 1 : 0 });
+  const eco = () => ({ money: G.money, up: G.up, stats: G.stats, stage: G.stage, bl: LC.Build.serialize(), bu: G.bunlock, ph: +G.clock.toFixed(5), day: G.day, st: G.stormLeft > 0 ? 1 : 0 });
   const bgState = () => [+BG.pos.x.toFixed(2), +BG.pos.z.toFixed(2), +BG.heading.toFixed(3), +BG.load.n.toFixed(2), +BG.load.g.toFixed(2), BG.sec, MP.drv];
   const roster = () => [['H', MP.name, 0]].concat(Object.keys(MP.players).map(k => [k, MP.players[k].name, MP.players[k].ci]));
   function pushWorld(to) {
@@ -242,6 +242,7 @@
         N.toGuest(null, { t: 'sk-', id: s.id, to: id, bg: !!m.bg, n: s.n, g: s.g });
         break;
       }
+      case 'bld': ctx.buildFor({ a: m.a, ty: m.ty, id: m.id, x: +m.x || 0, z: +m.z || 0 }); pushWorld(); break;
       case 'bin': if (!MP.drv && BG.owned) { MP.drv = id; } pushWorld(); break;
       case 'gin': if (!MP.gdrv && GD.owned) { MP.gdrv = id; } pushWorld(); break;
       case 'gout':
@@ -417,6 +418,7 @@
   MP.sackTake = function (s, bg) { const t = performance.now(); if (s.req && t - s.req < 1200) return; s.req = t; N.toHost({ t: 'sk-', id: s.id, bg: !!bg }); };
   MP.sackTaken = function (s) { if (MP.host) N.toGuest(null, { t: 'sk-', id: s.id, to: 'H', n: s.n, g: s.g }); };
   MP.buy = function (id) { N.toHost({ t: 'buy', id }); };
+  MP.build = function (m) { m.t = 'bld'; N.toHost(m); };
   MP.event = function (m) { if (MP.host) { m.t = 'ev'; N.toGuest(null, m); } };
   // Gastgeber ist durch den Tunnel gefahren: alle kommen mit
   MP.traveled = function () {
