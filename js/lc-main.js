@@ -4,7 +4,7 @@
    ========================================================= */
 (function (LC) {
   const U = LC.U, W = LC.World, D = LC.Dust, B = LC.Base, PL = LC.Player, V = LC.Vacuum, P = LC.Post, A = LC.Audio, UI = LC.UI, SK = LC.Sacks, BG = LC.Buggy, AV = LC.Avatar, GL = LC.Globe, CS = LC.Cutscene, MP = LC.MP, RB = LC.Robots, GD = LC.Glider, BD = LC.Build;
-  const VERSION = '0.13.0';                 // nach jeder Änderung hochzählen
+  const VERSION = '0.13.1';                 // nach jeder Änderung hochzählen
   const SAVE_KEY = 'lunarclean_save_v1', SET_KEY = 'lunarclean_settings_v1';
   const DONE_AT = 0.9995;                  // Sektor gilt erst als fertig, wenn die Anzeige 100 % zeigt
   const PRICE_N = 2, PRICE_G = 15;         // ¢ pro kg: normaler Staub / Glitzerstaub
@@ -51,7 +51,7 @@
     help: ['Der Roboter steckt nach dem Kauf in deinem Gepäck. Geh dorthin, wo er putzen soll, und drück R – dann setzt du ihn ab.', 'Er fährt von allein zum nächsten Staub, saugt ihn auf (bis 300 kg) und bringt die Ladung selbst zum Staublager oder zum Außenposten. Das Geld landet direkt in deiner Kasse.', 'Mitnehmen: Stell dich neben ihn und drück E, dann ist er wieder im Gepäck – so kommt er auch mit durch den Tunnel.', 'Auf der Karte ist er ein grünes Dreieck. Grünes Licht: er putzt. Oranges Licht: er bringt Staub weg. Blaues Licht: kein Staub mehr da. Rotes Licht: es ist Nacht und er steht nicht im Kreis eines Lichtmasts – dann wartet er bis zum Morgen.', 'Mit dem Bau-Hammer lenkst du ihn: im gelben Kreis eines Lichtmasts arbeitet er auch nachts, im blauen Kreis einer Signalbake putzt er nur dort.', 'Jede weitere Stufe ist ein Roboter mehr (bis zu 4).'],
     desc: 'Putzt ganz von allein: fährt zum Staub, saugt und bringt die Ladung selbst zur Abgabe. Jede Stufe ist ein Roboter mehr.', fmt: v => v + (v === 1 ? ' Roboter' : ' Roboter') };
   UP.hammer = { name: 'Bau-Hammer', max: 1, costs: [4000], needs: 'vac',
-    help: ['Mit B öffnest du das Bau-Menü. Mit den Zahlentasten wählst du, was du bauen willst – manches musst du dort erst einmal freischalten.', 'Dann zeigst du auf den Boden vor dir: Blau heißt „hier geht es“, Rot heißt „hier nicht“. Linke Maustaste baut, B oder die rechte Maustaste hört auf.', 'Glasröhre mit Einwurf: Stell den Einwurf dorthin, wo du gerade putzt. Die Röhre führt von selbst zum Staublager (in Sektor 2 zum Außenposten). Am Einwurf drückst du E – dein Staub wandert sichtbar durch das Glas und wird am Ende automatisch verkauft. Das geht auch mit dem Buggy.', 'Lichtmast: Putzroboter arbeiten im Dunkeln nicht. Setzt du sie im gelben Kreis eines Lichtmasts ab, putzen sie auch nachts – aber nur im Licht.', 'Signalbake: Roboter, die du in ihrem blauen Kreis absetzt, putzen nur innerhalb dieses Kreises. So schickst du sie genau dorthin, wo du sie haben willst.', 'Staubpresse: Gib mit E Staub hinein (auch die Buggy-Ladung). Sie presst ihn zu Blöcken und zahlt 50 % mehr – das dauert aber, etwa 9 kg pro Sekunde.', 'Die Kreise am Boden und auf der Karte zeigen immer, wie weit Lichtmast und Bake reichen.', 'Abreißen (im Bau-Menü): Du bekommst den halben Preis zurück.'],
+    help: ['Mit B öffnest du das Bau-Menü. Mit den Zahlentasten wählst du, was du bauen willst – manches musst du dort erst einmal freischalten.', 'Dann zeigst du auf den Boden vor dir: Blau heißt „hier geht es“, Rot heißt „hier nicht“. Linke Maustaste baut, B oder die rechte Maustaste hört auf.', 'Glasröhre mit Einwurf: Stell den Einwurf dorthin, wo du gerade putzt. Die Röhre führt von selbst zum Staublager (in Sektor 2 zum Außenposten). Am Einwurf drückst du E – dein Staub wandert sichtbar durch das Glas und wird am Ende automatisch verkauft. Das geht auch mit dem Buggy.', 'Lichtmast: Putzroboter arbeiten im Dunkeln nicht. Setzt du sie im gelben Kreis eines Lichtmasts ab, putzen sie auch nachts – aber nur im Licht.', 'Signalbake: Roboter, die du in ihrem blauen Kreis absetzt, putzen nur innerhalb dieses Kreises. So schickst du sie genau dorthin, wo du sie haben willst.', 'Staubpresse: Gib mit E Staub hinein (auch die Buggy-Ladung). Sie presst ihn zu Ballen, etwa 9 kg pro Sekunde. Die Presse verkauft nichts: Hol die Ballen mit E ab (zu Fuß zwei auf einmal, mit dem Buggy alle) und bring sie selbst zum Staublager oder kipp sie in den Einwurf einer Glasröhre. Ballen sind 50 % mehr wert als loser Staub.', 'Die Kreise am Boden und auf der Karte zeigen immer, wie weit Lichtmast und Bake reichen.', 'Abreißen (im Bau-Menü): Du bekommst den halben Preis zurück.'],
     desc: 'Bau deine eigene Basis: Glasröhren, die deinen Staub von überall zum Verkauf leiten, Lichtmasten für die Nacht und Signalbaken.' };
   UP.glider = { name: 'Schwebegleiter', max: 1, costs: [30000], needs: 'tunnel',
     help: ['Der Gleiter steht auf dem Landeplatz neben der Basis. Mit E steigst du ein.', 'Fliegen: Leertaste hebt ab und steigt, C sinkt. W und S geben Schub, A und D drehen, mit der Maus siehst du dich um.', 'Er fliegt über beide Krater und den Pass – so bist du in Sekunden drüben. Aussteigen geht nur gelandet (mit C ganz runter, dann E).', 'Putzen aus der Luft: Unter dem Bauch hängt ein Saugrüssel. Flieg tiefer als 9 m und halte die linke Maustaste – je tiefer, desto stärker saugt er. Alles landet im Laderaum (2.500 kg).', 'Zu zweit: Fliegt dein Freund, drückst du am Gleiter E und fliegst mit. Dann bedienst du den großen Saugrüssel und zielst mit der Maus – viel breiter als der Pilot allein.', 'Entladen: auf dem Landeplatz oder einer Fahrzeug-Station landen und E drücken.'],
@@ -230,7 +230,7 @@
         if (k === 'buggy') BG.setOwned(v > 0);
         if (k === 'glider') GD.setOwned(v > 0);
       });
-      if (e.bu) { G.bunlock = e.bu; } if (Array.isArray(e.bl) && JSON.stringify(e.bl) !== JSON.stringify(BD.serialize())) { BD.sync(e.bl); shadowFrames = 2; }
+      if (e.bu) { G.bunlock = e.bu; } if (Array.isArray(e.bl)) { if (BD.sync(e.bl)) shadowFrames = 2; }
       if (e.ph != null) { G.clock = +e.ph || 0; G.day = e.day || 1; G.stormLeft = e.st ? 30 : 0; }
       ['sectorDone', 'sector2Done', 'sec2Seen', 'bonusPaid', 'bonus2Paid'].forEach(k => { G.stats[k] = !!e.stats[k]; });
       G.stage = +e.stage || 0;
@@ -904,7 +904,14 @@
     if (selling) return;
     if (riding) { stopRide(); return; }
     const tb = BG.driving ? BD.nearest(BG.pos.x, BG.pos.z, 6) : null;
-    if (BG.driving && tb && tb.queue && BG.total() > 0.05 && !atTunnel()) { BD.deposit(tb, BG.load.n, BG.load.g); BG.load.n = BG.load.g = 0; A.play('thump'); UI.toast(tb.t === 'press' ? 'Buggy-Ladung in die Presse gekippt.' : 'Buggy-Ladung in die Röhre gekippt.', '', 2.5); return; }
+    if (BG.driving && tb && tb.t === 'press' && !atTunnel()) {
+      // Buggy an der Presse: fertige Ballen einladen, sonst losen Staub hineinkippen (Ballen im Laderaum werden nicht noch einmal gepresst)
+      if (BD.ready(tb) >= 0.5 && BG.room() > 1) { const r = bTake(tb, BG.room() / BD.PRESS_BONUS); BG.load.n += r.n * BD.PRESS_BONUS; BG.load.g += r.g * BD.PRESS_BONUS; G.buggyBales = true; A.play('thump'); UI.toast('Ballen in den Buggy geladen. Verkauf sie an der Entladestation oder kipp sie in eine Glasröhre.', '', 5); return; }
+      if (BG.total() > 0.05 && !G.buggyBales) { bDeposit(tb, BG.load.n, BG.load.g); BG.load.n = BG.load.g = 0; A.play('thump'); UI.toast('Buggy-Ladung in die Presse gekippt. Hol die Ballen ab, wenn sie fertig sind.', '', 4); return; }
+      if (G.buggyBales && BG.total() > 0.05) { A.play('deny'); UI.toast('Im Laderaum liegen schon Ballen – erst verkaufen.', '', 3); return; }
+    }
+    if (BG.total() < 0.05) G.buggyBales = false;
+    if (BG.driving && tb && tb.t === 'tube' && BG.total() > 0.05 && !atTunnel()) { bDeposit(tb, BG.load.n, BG.load.g); BG.load.n = BG.load.g = 0; G.buggyBales = false; A.play('thump'); UI.toast('Buggy-Ladung in die Röhre gekippt.', '', 2.5); return; }
     if (GD.driving) {
       if (GD.atDock() && GD.total() > 0.05) selling = { src: 'glider', n: GD.load.n, g: GD.load.g, t: 0, dur: 1.2 + Math.min(3.2, GD.total() / 350), paid: 0, total: Math.round(gliderWorth()) };
       else exitGlider();
@@ -919,10 +926,23 @@
       return;
     }
     if (nearPoint && nearPoint.id === 'shop') openShop();
-    else if (nearPoint && (nearPoint.id === 'intake' || nearPoint.id === 'press')) {
+    else if (nearPoint && nearPoint.id === 'press') {
+      // Presse: losen Staub hineingeben; fertige Ballen mitnehmen (verkauft wird am Staublager oder über eine Glasröhre)
+      const pb = nearPoint.b, loose = G.carry.filter(c => !c.bale), ln = loose.reduce((a, c) => a + c.n, 0), lg = loose.reduce((a, c) => a + c.g, 0);
+      if (tankTotal() + ln + lg >= 0.05) {
+        bDeposit(pb, G.tank.n + ln, G.tank.g + lg); G.tank.n = G.tank.g = 0; G.carry = G.carry.filter(c => c.bale); fullBeep = false; A.play('thump');
+        UI.toast('Die Presse arbeitet. Hol die Ballen ab, wenn sie fertig sind.', '', 4);
+      } else if (BD.ready(pb) >= 0.5) {
+        if (G.carry.length >= SK.CARRY) { A.play('deny'); UI.toast('Mehr als ' + SK.CARRY + ' Ballen oder Säcke kannst du nicht tragen.', '', 3); return; }
+        const r = bTake(pb, BD.BALE);
+        G.carry.push({ n: r.n * BD.PRESS_BONUS, g: r.g * BD.PRESS_BONUS, bale: true }); A.play('click');
+        UI.toast('Ballen aufgenommen. Verkauf ihn am Staublager oder wirf ihn in den Einwurf einer Glasröhre.', '', 5);
+      } else { A.play('deny'); UI.toast(pb.queue.n + pb.queue.g > 0.5 ? 'Die Presse arbeitet noch – gleich ist ein Ballen fertig.' : 'Die Presse ist leer. Bring Staub mit.', '', 3); }
+    }
+    else if (nearPoint && nearPoint.id === 'intake') {
       const tot = tankTotal() + carryN() + carryG();
       if (tot < 0.05) { A.play('deny'); UI.toast('Du hast keinen Staub dabei. Erst sammeln!'); return; }
-      BD.deposit(nearPoint.b, G.tank.n + carryN(), G.tank.g + carryG()); G.tank.n = G.tank.g = 0; G.carry = []; G.stats.sold++; fullBeep = false; A.play('thump');
+      bDeposit(nearPoint.b, G.tank.n + carryN(), G.tank.g + carryG()); G.tank.n = G.tank.g = 0; G.carry = []; G.stats.sold++; fullBeep = false; A.play('thump');
     }
     else if (nearPoint && (nearPoint.id === 'silo' || nearPoint.id === 'post')) {
       const tot = tankTotal() + carryN() + carryG();
@@ -1047,6 +1067,8 @@
       const cost = BD.price(m.ty, m.x, m.z); if (G.money < cost) return false;
       G.money -= cost; BD.add(m.ty, m.x, m.z); D.clearArea(m.x, m.z, m.ty === 'tube' ? 1.2 : m.ty === 'press' ? 2.2 : 0.4); shadowFrames = 2; return true;
     }
+    if (m.a === 'dep') { const b = BD.byId(m.id); if (!b || !b.queue) return false; BD.deposit(b, Math.max(0, +m.n || 0), Math.max(0, +m.g || 0)); return true; }
+    if (m.a === 'take') { const b = BD.byId(m.id); if (!b || !b.out) return false; BD.takeBales(b, Math.max(0, +m.kg || 0)); return true; }
     if (m.a === 'del') { const b = BD.byId(m.id); if (!b) return false; G.money += Math.round(BD.price(b.t, b.x, b.z) / 2); BD.remove(b); shadowFrames = 2; return true; }
     return false;
   }
@@ -1065,14 +1087,15 @@
     else { buildDo({ a: 'add', ty: buildSel, x: a.x, z: a.z }); save(); MP.pushWorld(); }
     A.play('thump'); V.kickDust(a.x, a.y + 0.1, a.z, 14, 1.2);
     if (buildSel === 'tube') { setBuild(null); UI.toast('Röhre steht! Am Einwurf E drücken – dein Staub wandert zum Verkauf.', 'gold', 6); }
-    else if (buildSel === 'press') { setBuild(null); UI.toast('Presse steht! Mit E Staub hineingeben – sie zahlt 50 % mehr, braucht aber Zeit.', 'gold', 6); }
+    else if (buildSel === 'press') { setBuild(null); UI.toast('Presse steht! Mit E Staub hineingeben, später die Ballen abholen und selbst verkaufen – sie sind 50 % mehr wert.', 'gold', 7); }
     else if (buildSel === 'lamp') UI.toast('Putzroboter, die du im gelben Kreis absetzt, arbeiten auch nachts.', '', 5);
     else if (buildSel === 'beacon') UI.toast('Putzroboter, die du im blauen Kreis absetzt, putzen nur dort.', '', 5);
   }
-  function tubeArrive(n, g) { const v = Math.round(n * PRICE_N + g * PRICE_G); if (v > 0) { G.money += v; G.stats.earned += v; tubePaid += v; tubeT = 1.2; } }
-  // die Presse zahlt laufend aus (Bruchteile sammeln, damit nichts verloren geht)
-  function pressOut(n, g) { pressAcc += (n * PRICE_N + g * PRICE_G) * BD.PRESS_BONUS; const v = Math.floor(pressAcc); if (v > 0) { pressAcc -= v; G.money += v; G.stats.earned += v; pressPaid += v; pressT = 1.5; } }
-  let tubePaid = 0, tubeT = 0, pressAcc = 0, pressPaid = 0, pressT = 0;
+  // Presse/Roehre: der Gastgeber besitzt den Inhalt, Gaeste schicken nur Anfragen
+  function bDeposit(b, n, g) { if (MP.guest) MP.build({ a: 'dep', id: b.id, n: +n.toFixed(2), g: +g.toFixed(2) }); else BD.deposit(b, n, g); }
+  function bTake(b, kg) { const r = BD.takeBales(b, kg); if (MP.guest) MP.build({ a: 'take', id: b.id, kg: +kg.toFixed(2) }); return r; }
+  function tubeArrive(n, g) { if (MP.guest) { tubeT = 1.2; return; } const v = Math.round(n * PRICE_N + g * PRICE_G); if (v > 0) { G.money += v; G.stats.earned += v; tubePaid += v; tubeT = 1.2; } }
+  let tubePaid = 0, tubeT = 0;
   function updateBuild(dt) {
     if (buildSel && (inVeh() || riding || state !== 'play')) setBuild(null);
     if (buildSel) {
@@ -1080,8 +1103,7 @@
       if (buildSel === 'del') { const b = a.x || a.z ? BD.nearest(a.x, a.z, 2.2) : null; if (b) BD.ghost('del', { ok: true, x: b.x, y: b.y, z: b.z }); else BD.ghostOff(); }
       else BD.ghost(buildSel, a);
     }
-    BD.update(dt, time, (1 - W.sunK) * (1 - stormK * 0.5) + stormK * 0.3, tubeArrive, pressOut);
-    if (pressT > 0) { pressT -= dt; if (pressT <= 0 && pressPaid > 0) { A.play('sold'); UI.toast('Staubpresse fertig: + ' + UI.n0(pressPaid) + ' ¢', 'gold', 3); pressPaid = 0; if (!MP.guest) save(); } }
+    BD.update(dt, time, (1 - W.sunK) * (1 - stormK * 0.5) + stormK * 0.3, tubeArrive);
     if (tubeT > 0) { tubeT -= dt; if (tubeT <= 0 && tubePaid > 0) { A.play('sold'); UI.toast('Röhre: + ' + UI.n0(tubePaid) + ' ¢', 'gold', 2.5); tubePaid = 0; if (!MP.guest) save(); } }
   }
 
@@ -1286,7 +1308,8 @@
       else if (flying) UI.prompt(GD.atDock() && GD.total() > 0.05 ? '<kbd>E</kbd>Gleiter entladen<em>+ ' + UI.n0(Math.round(gliderWorth())) + ' ¢</em>' : GD.canExit() ? '<kbd>E</kbd>Aussteigen' : null);
       else if (driving) {
         if (atTunnel()) UI.prompt('Pass nach Sektor 2 – noch gesperrt (Werkstatt)');
-        else if (BG.total() > 0.05 && BD.nearest(BG.pos.x, BG.pos.z, 6) && BD.nearest(BG.pos.x, BG.pos.z, 6).queue) { const pr = BD.nearest(BG.pos.x, BG.pos.z, 6).t === 'press'; UI.prompt('<kbd>E</kbd>Ladung in die ' + (pr ? 'Presse' : 'Röhre') + ' kippen<em>+ ' + UI.n0(Math.round(buggyWorth() * (pr ? BD.PRESS_BONUS : 1))) + ' ¢</em>'); }
+        else if (BD.nearest(BG.pos.x, BG.pos.z, 6) && BD.nearest(BG.pos.x, BG.pos.z, 6).t === 'press') { const pb = BD.nearest(BG.pos.x, BG.pos.z, 6); UI.prompt(BD.ready(pb) >= 0.5 ? '<kbd>E</kbd>Ballen einladen<em>' + UI.n0(BD.ready(pb)) + ' kg gepresst</em>' : BG.total() > 0.05 && !G.buggyBales ? '<kbd>E</kbd>Ladung in die Presse kippen' : 'Staubpresse' + (pb.queue.n + pb.queue.g > 1 ? ' – presst noch ' + UI.n0(pb.queue.n + pb.queue.g) + ' kg' : '')); }
+        else if (BG.total() > 0.05 && BD.nearest(BG.pos.x, BG.pos.z, 6) && BD.nearest(BG.pos.x, BG.pos.z, 6).t === 'tube') UI.prompt('<kbd>E</kbd>Ladung in die Röhre kippen<em>+ ' + UI.n0(Math.round(buggyWorth())) + ' ¢</em>');
         else if (BG.atStation() && BG.total() > 0.05) UI.prompt('<kbd>E</kbd>Buggy entladen<em>+ ' + UI.n0(Math.round(buggyWorth())) + ' ¢</em>');
         else if (Math.abs(BG.speed) < 0.6) UI.prompt('<kbd>E</kbd>Aussteigen');
         else UI.prompt(null);
@@ -1296,7 +1319,8 @@
         else { const a = BD.aim(camera, buildSel); UI.prompt(a.ok ? '<kbd>Maus</kbd>' + BD.TYPES[buildSel].name + ' bauen<em>' + UI.n0(BD.price(buildSel, a.x, a.z)) + ' ¢</em> · <kbd>B</kbd>fertig' : a.why + ' · <kbd>B</kbd>fertig'); }
       }
       else if (nearPoint && nearPoint.id === 'shop') UI.prompt('<kbd>E</kbd>Werkstatt öffnen');
-      else if (nearPoint && nearPoint.id === 'press') UI.prompt(tankTotal() + G.carry.length >= 0.05 ? '<kbd>E</kbd>Staub pressen lassen<em>+ ' + UI.n0(Math.round(tankWorth() * BD.PRESS_BONUS)) + ' ¢ (50 % mehr)</em>' : 'Staubpresse – bring Staub mit' + (nearPoint.b.queue.n + nearPoint.b.queue.g > 1 ? ' · presst noch ' + UI.n0(nearPoint.b.queue.n + nearPoint.b.queue.g) + ' kg' : ''));
+      else if (nearPoint && nearPoint.id === 'press') { const pb = nearPoint.b, hasLoose = tankTotal() + G.carry.filter(c => !c.bale).length >= 0.05, work = pb.queue.n + pb.queue.g;
+        UI.prompt(hasLoose ? '<kbd>E</kbd>Staub pressen lassen<em>Ballen sind 50 % mehr wert</em>' : BD.ready(pb) >= 0.5 ? '<kbd>E</kbd>Ballen mitnehmen<em>' + UI.n0(BD.ready(pb)) + ' kg fertig' + (work > 1 ? ', ' + UI.n0(work) + ' kg in Arbeit' : '') + '</em>' : work > 1 ? 'Staubpresse – presst noch ' + UI.n0(work) + ' kg' : 'Staubpresse – bring Staub mit'); }
       else if (nearPoint && nearPoint.id === 'intake') UI.prompt(tankTotal() + G.carry.length >= 0.05 ? '<kbd>E</kbd>Staub in die Röhre kippen<em>+ ' + UI.n0(Math.round(tankWorth())) + ' ¢</em>' : 'Einwurf der Glasröhre – bring Staub mit');
       else if ((!nearPoint || nearPoint.id === 'tunnel') && atTunnel()) UI.prompt('Pass nach Sektor 2 – noch gesperrt (Werkstatt)');
       else if (nearPoint && nearPoint.id !== 'tunnel') UI.prompt(tankTotal() + G.carry.length >= 0.05 ? '<kbd>E</kbd>Staub ' + (nearPoint.id === 'post' ? 'am Außenposten abgeben' : 'ins Staublager geben') + '<em>+ ' + UI.n0(Math.round(tankWorth())) + ' ¢</em>' : (nearPoint.id === 'post' ? 'Außenposten' : 'Staublager') + ' – du hast noch keinen Staub dabei');

@@ -6,12 +6,12 @@
    ========================================================= */
 (function (LC) {
   const U = LC.U, W = LC.World, B = LC.Base;
-  const BD = { list: [], seq: 0, MAX: 40, TUBE_MAX: 240, LAMP_R: 18, BEACON_R: 28, PRESS_RATE: 9, PRESS_BONUS: 1.5 };
+  const BD = { list: [], seq: 0, MAX: 40, TUBE_MAX: 240, LAMP_R: 18, BEACON_R: 28, PRESS_RATE: 9, PRESS_BONUS: 1.5, BALE: 100 };
   BD.TYPES = {
     tube: { name: 'Glasröhre mit Einwurf', unlock: 3000, cost: 600, perM: 12, txt: 'Staub einwerfen – er wandert durch die Röhre zum Verkauf' },
     lamp: { name: 'Lichtmast', unlock: 0, cost: 250, perM: 0, txt: 'Roboter in seinem Lichtkreis arbeiten auch nachts' },
     beacon: { name: 'Signalbake', unlock: 0, cost: 100, perM: 0, txt: 'Roboter in ihrem Kreis putzen nur dort' },
-    press: { name: 'Staubpresse', unlock: 5000, cost: 3500, perM: 0, txt: 'presst Staub zu Blöcken: 50 % mehr Geld, dauert aber' }
+    press: { name: 'Staubpresse', unlock: 5000, cost: 3500, perM: 0, txt: 'presst Staub zu Ballen, die 50 % mehr wert sind – verkaufen musst du sie selbst' }
   };
   BD.ORDER = ['tube', 'lamp', 'beacon', 'press'];
   BD.radius = t => (t === 'lamp' ? BD.LAMP_R : t === 'beacon' ? BD.BEACON_R : 0);
@@ -80,7 +80,7 @@
       mesh(new THREE.TorusGeometry(0.7, 0.05, 8, 20), mats.acc, -1.0, 1.65, 0.95, g).rotation.x = Math.PI / 2;
       mesh(new THREE.BoxGeometry(1.3, 0.08, 1.0), mats.steel, 1.9, 0.5, 0, g);                                       // Ablage mit Blöcken
       b.blocks = []; for (let i = 0; i < 6; i++) { const bl = mesh(new THREE.BoxGeometry(0.36, 0.26, 0.36), mats.dust, 1.55 + (i % 3) * 0.4, 0.68 + Math.floor(i / 3) * 0.28, (i % 2 ? 0.2 : -0.2), g); bl.visible = false; b.blocks.push(bl); }
-      b.queue = { n: 0, g: 0 }; b.made = 0;
+      b.queue = { n: 0, g: 0 }; b.out = { n: 0, g: 0 };          // out = fertig gepresst, wartet als Ballen auf der Ablage
     } else if (b.t === 'tube') {
       // Einwurf: Trichter auf einem Sockel
       mesh(new THREE.CylinderGeometry(0.8, 0.9, 0.5, 20), mats.dark, 0, 0.25, 0, g); mesh(new THREE.CylinderGeometry(0.82, 0.82, 0.08, 20), mats.acc, 0, 0.5, 0, g);
@@ -127,16 +127,22 @@
   BD.nearest = function (x, z, maxD) { let best = null, bd = maxD; BD.list.forEach(b => { const d = Math.hypot(b.x - x, b.z - z); if (d < bd) { bd = d; best = b; } }); return best; };
   BD.serialize = () => BD.list.map(b => [b.id, b.t, +b.x.toFixed(2), +b.z.toFixed(2)]);
   // zum Speichern: mit dem Staub, der noch in Röhren und Pressen steckt
-  BD.save = () => BD.list.map(b => { const a = [b.id, b.t, +b.x.toFixed(2), +b.z.toFixed(2)]; if (b.queue) { let n = b.queue.n, g = b.queue.g; (b.blobs || []).forEach(q => { n += q.n; g += q.g; }); a.push(+n.toFixed(1), +g.toFixed(1)); } return a; });
+  BD.save = () => BD.list.map(b => { const a = [b.id, b.t, +b.x.toFixed(2), +b.z.toFixed(2)]; if (b.queue) { let n = b.queue.n, g = b.queue.g; (b.blobs || []).forEach(q => { n += q.n; g += q.g; }); a.push(+n.toFixed(1), +g.toFixed(1)); if (b.out) a.push(+b.out.n.toFixed(1), +b.out.g.toFixed(1)); } return a; });
   BD.load = function (arr) {
     BD.clear();
-    (Array.isArray(arr) ? arr : []).slice(0, BD.MAX).forEach(a => { if (BD.TYPES[a[1]] && W.inside(+a[2] || 0, +a[3] || 0, 0)) { const b = BD.add(a[1], +a[2] || 0, +a[3] || 0, +a[0] || 0); if (b && b.queue) { b.queue.n = Math.max(0, +a[4] || 0); b.queue.g = Math.max(0, +a[5] || 0); } } });
+    (Array.isArray(arr) ? arr : []).slice(0, BD.MAX).forEach(a => { if (BD.TYPES[a[1]] && W.inside(+a[2] || 0, +a[3] || 0, 0)) { const b = BD.add(a[1], +a[2] || 0, +a[3] || 0, +a[0] || 0); if (b && b.queue) { b.queue.n = Math.max(0, +a[4] || 0); b.queue.g = Math.max(0, +a[5] || 0); } if (b && b.out) { b.out.n = Math.max(0, +a[6] || 0); b.out.g = Math.max(0, +a[7] || 0); } } });
   };
   // Liste vom Gastgeber übernehmen (nur Unterschiede umbauen)
   BD.sync = function (arr) {
-    const want = {}; arr.forEach(a => { want[a[0]] = a; });
-    BD.list.slice().forEach(b => { if (!want[b.id]) BD.remove(b); });
-    arr.forEach(a => { if (!BD.byId(a[0])) BD.add(a[1], a[2], a[3], a[0]); });
+    const want = {}; arr.forEach(a => { want[a[0]] = a; }); let changed = false;
+    BD.list.slice().forEach(b => { if (!want[b.id]) { BD.remove(b); changed = true; } });
+    arr.forEach(a => { if (!BD.byId(a[0])) { BD.add(a[1], a[2], a[3], a[0]); changed = true; } });
+    // Mengen in Roehren und Pressen gehoeren dem Gastgeber
+    arr.forEach(a => { const b = BD.byId(a[0]); if (!b || a.length < 6) return;
+      if (b.queue) { const have = b.queue.n + b.queue.g + (b.blobs || []).reduce((s, q) => s + q.n + q.g, 0), want2 = (+a[4] || 0) + (+a[5] || 0);
+        if (Math.abs(have - want2) > 0.6) { b.queue.n = +a[4] || 0; b.queue.g = +a[5] || 0; (b.blobs || []).length = 0; } }
+      if (b.out) { b.out.n = Math.max(0, +a[6] || 0); b.out.g = Math.max(0, +a[7] || 0); } });
+    return changed;
   };
 
   // Staub in eine Röhre kippen
@@ -183,7 +189,13 @@
   BD.ghostOff = function () { if (ghost) ghost.visible = false; if (ghost && ghost.line) ghost.line.visible = false; };
 
   // night = 0..1 (wie dunkel es ist); onArrive(n, g): Staub ist am Verkaufspunkt angekommen
-  BD.update = function (dt, t, night, onArrive, onPress) {
+  // fertige Ballen von der Presse nehmen: höchstens maxKg (ungepresstes Gewicht); gibt { n, g } zurück
+  BD.ready = b => (b && b.out ? b.out.n + b.out.g : 0);
+  BD.takeBales = function (b, maxKg) {
+    const tot = BD.ready(b), take = Math.min(tot, maxKg); if (take < 0.5) return null;
+    const k = take / tot, r = { n: b.out.n * k, g: b.out.g * k }; b.out.n -= r.n; b.out.g -= r.g; return r;
+  };
+  BD.update = function (dt, t, night, onArrive) {
     for (let i = 0; i < BD.list.length; i++) {
       const b = BD.list[i];
       if (b.pool) b.pool.material.opacity = 0.75 * night;
@@ -192,10 +204,10 @@
         const q = b.queue, tot = q.n + q.g;
         if (tot > 0.001) {
           const take = Math.min(tot, BD.PRESS_RATE * dt), k = take / tot;
-          onPress(q.n * k, q.g * k); q.n -= q.n * k; q.g -= q.g * k; b.made += take;
+          b.out.n += q.n * k; b.out.g += q.g * k; q.n -= q.n * k; q.g -= q.g * k;
           b.piston.position.y = 1.75 + Math.abs(Math.sin(t * 5)) * 0.6;
         } else b.piston.position.y += (2.3 - b.piston.position.y) * Math.min(1, dt * 4);
-        const nb = tot > 0.001 ? 1 + Math.floor(b.made / 40) % 6 : 0; for (let j = 0; j < 6; j++) b.blocks[j].visible = j < nb;
+        const nb = Math.min(6, Math.ceil((b.out.n + b.out.g - 0.5) / BD.BALE)); for (let j = 0; j < 6; j++) { b.blocks[j].visible = j < nb; b.blocks[j].material = b.out.g > b.out.n * 0.5 ? mats.glit : mats.dust; }
       }
       else if (b.blobs) {
         const q = b.queue;
@@ -216,7 +228,7 @@
     }
   };
   // wie viel Staub ist gerade in Röhren unterwegs? (für die Anzeige)
-  BD.inTransit = function () { let s = 0; BD.list.forEach(b => { if (b.queue) { s += b.queue.n + b.queue.g; (b.blobs || []).forEach(q => { s += q.n + q.g; }); } }); return s; };
+  BD.inTransit = function () { let s = 0; BD.list.forEach(b => { if (b.out) s += b.out.n + b.out.g; if (b.queue) { s += b.queue.n + b.queue.g; (b.blobs || []).forEach(q => { s += q.n + q.g; }); } }); return s; };
 
   LC.Build = BD;
 })(window.LC);
