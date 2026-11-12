@@ -1004,8 +1004,17 @@
     G.tank.n += n * k; G.tank.g += g * k; G.stats.kg += tot * k;
   }
 
+  // Film-Modus für Trailer-Aufnahmen (nur mit ?test=1): feste Zeitschritte, freie Kamera
+  const film = { on: false, cam: null, hands: true };
+  function filmStep(dt) {
+    update(dt);
+    if (film.cam) { film.cam(camera, time, avatar); camera.updateMatrixWorld(); }
+    if (shadowFrames > 0) { shadowFrames--; renderer.shadowMap.needsUpdate = true; }
+    P.render(renderer, scene, camera, film.cam || !film.hands || emote ? null : V.scene, V.camera, time);
+  }
   function frame(now) {
     requestAnimationFrame(frame);
+    if (film.on) { lastT = now; return; }          // Film-Modus (Trailer): Bilder werden einzeln über LC.debug.step gerechnet
     let dt = (now - lastT) / 1000; lastT = now;
     fpsAcc += dt; fpsN++;
     if (fpsAcc >= 1) { UI.fps(Math.round(fpsN / fpsAcc) + ' FPS'); fpsAcc = 0; fpsN = 0; }
@@ -1254,6 +1263,7 @@
     tp: (x, z, yaw, pitch) => { PL.reset(x, z, yaw || 0); if (pitch != null) PL.pitch = pitch; },
     fire: v => { fire = v; }, money: v => { G.money += v; }, interact, buy,
     sim: (sec, fn) => { const n = Math.round(sec * 60); for (let i = 0; i < n; i++) { if (fn) fn(i / 60); update(1 / 60); } },
+    film, step: filmStep, AV, RB, THREE_camera: () => camera, THREE_scene: () => scene,
     PL, G, V, D, SK, BG, GD, CS, GL, MP, W, setSec, setTool, sackKey, applyState, openMap, openGlobe, closeMap, startEmote, startPlay,
     info: () => ({ state, pc: D.percentClean(), tank: tankTotal(), money: G.money, pos: PL.pos.toArray(), post: P.enabled, target: V.target })
   };
