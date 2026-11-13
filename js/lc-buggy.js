@@ -51,24 +51,24 @@
       add(box(0.12, 0.3, 0.12), mDark, p[0] * 0.78, 0.7, p[1]);
     });
     // ---- Druckkabine: geschlossener Raum mit zwei Plaetzen, Fenstern und Armaturen ----
-    const mGlass = new THREE.MeshStandardMaterial({ color: 0xbfe2f5, roughness: 0.04, metalness: 0.2, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.FrontSide });
+    const mGlass = new THREE.MeshStandardMaterial({ color: 0xdff1fb, roughness: 0.03, metalness: 0.15, transparent: true, opacity: 0.11, depthWrite: false, side: THREE.FrontSide });
     const mHull = mk(0xb4b0a7, 0.5, 0.25), mIn = mk(0x34373d, 0.85, 0.08);
     mIn.emissive = new THREE.Color(0x20262e); mIn.emissiveIntensity = 1;   // Innenraum bleibt nachts lesbar
     const Z0 = -1.08, Z1 = 0.56, HW = 0.86, FY = 0.95, RY = 2.36, CZ = (Z0 + Z1) / 2, CD = Z1 - Z0;
     add(box(HW * 2, 0.07, CD), mIn, 0, FY + 0.035, CZ);                              // Kabinenboden
     // Rueckwand mit kleinem Fenster zum Laderaum
-    add(box(HW * 2, 0.9, 0.09), mHull, 0, FY + 0.45, Z1);
-    add(box(HW * 2 - 0.16, 0.46, 0.05), mGlass, 0, FY + 1.13, Z1);
-    add(box(HW * 2, 0.07, 0.1), mOrange, 0, FY + 0.92, Z1);
+    add(box(HW * 2, 0.75, 0.09), mHull, 0, FY + 0.375, Z1);
+    add(box(HW * 2 - 0.14, 0.62, 0.05), mGlass, 0, FY + 1.06, Z1);
+    add(box(HW * 2, 0.07, 0.1), mOrange, 0, FY + 0.75, Z1);
     [-1, 1].forEach(sg => {
-      add(box(0.08, 0.62, CD), mHull, sg * HW, FY + 0.31, CZ);                       // Tuerblech unten
-      add(box(0.05, 0.8, CD - 0.3), mGlass, sg * HW, FY + 1.05, CZ + 0.04);          // Seitenfenster
-      add(box(0.1, 0.07, CD), mOrange, sg * HW, FY + 0.65, CZ);                      // Zierstreifen
+      add(box(0.08, 0.44, CD), mHull, sg * HW, FY + 0.22, CZ);                       // Tuerblech unten
+      add(box(0.05, 0.95, CD - 0.16), mGlass, sg * HW, FY + 0.93, CZ + 0.02);        // Seitenfenster
+      add(box(0.1, 0.07, CD), mOrange, sg * HW, FY + 0.46, CZ);                      // Zierstreifen
       add(box(0.03, 1.34, 0.04), mDark, sg * (HW + 0.03), FY + 0.74, -0.14);         // Tuerfugen
       add(box(0.03, 1.34, 0.04), mDark, sg * (HW + 0.03), FY + 0.74, 0.44);
-      add(box(0.07, 0.06, 0.3), mSteel, sg * (HW + 0.05), FY + 0.52, 0.2);           // Tuergriff
-      add(tube(1.4, 0.055), mSteel, sg * (HW - 0.01), 1.68, -0.93, 0.2);             // A-Saeule
-      add(tube(1.4, 0.05), mSteel, sg * (HW - 0.01), FY + 0.7, Z1 - 0.04);           // B-Saeule
+      add(box(0.07, 0.06, 0.3), mSteel, sg * (HW + 0.05), FY + 0.3, 0.2);            // Tuergriff
+      add(tube(1.4, 0.042), mSteel, sg * (HW - 0.01), 1.68, -0.93, 0.2);             // A-Saeule
+      add(tube(1.4, 0.04), mSteel, sg * (HW - 0.01), FY + 0.7, Z1 - 0.04);           // B-Saeule
     });
     add(box(HW * 2 - 0.1, 1.42, 0.05), mGlass, 0, 1.68, -0.93, 0.2);                 // Frontscheibe
     add(box(HW * 2 + 0.06, 0.09, CD + 0.26), mHull, 0, RY, CZ - 0.06);               // Dach
@@ -86,11 +86,11 @@
     add(box(0.26, 0.26, 0.56), mIn, 0, 1.12, 0.14);                                  // Mittelkonsole
     add(box(0.16, 0.1, 0.2), mSteel, 0, 1.3, -0.08);                                 // Schalthebel
     // Armaturenbrett mit Bildschirmen
-    add(box(HW * 2 - 0.1, 0.34, 0.34), mIn, 0, 1.3, -0.94);
-    add(box(HW * 2 - 0.16, 0.06, 0.3), mDark, 0, 1.49, -0.93);
+    add(box(HW * 2 - 0.1, 0.28, 0.34), mIn, 0, 1.26, -0.94);
+    add(box(HW * 2 - 0.16, 0.06, 0.3), mDark, 0, 1.42, -0.93);
     const mScr = new THREE.MeshStandardMaterial({ color: 0, emissive: 0x4fe3ff, emissiveIntensity: 0.8 });
-    add(box(0.42, 0.2, 0.02), mScr, -0.38, 1.36, -0.775, -0.3);
-    add(box(0.34, 0.16, 0.02), mScr, 0.4, 1.34, -0.775, -0.3);
+    add(box(0.42, 0.18, 0.02), mScr, -0.38, 1.32, -0.775, -0.3);
+    add(box(0.34, 0.15, 0.02), mScr, 0.4, 1.3, -0.775, -0.3);
     add(new THREE.TorusGeometry(0.19, 0.024, 8, 20), mRubber, -0.38, 1.46, -0.66, -0.45);  // Lenkrad
     add(tube(0.3, 0.02), mSteel, -0.38, 1.4, -0.74, 1.1);
     // Bordsauger: Steuerknueppel innen beim Beifahrer, Arm aussen an der rechten Flanke

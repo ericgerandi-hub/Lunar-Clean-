@@ -6,7 +6,7 @@
    ========================================================= */
 (function (LC) {
   const U = LC.U, W = LC.World, B = LC.Base, D = LC.Dust, V = LC.Vacuum;
-  const GD = { owned: false, driving: false, busy: false, heading: 0, speed: 0, suck: 0, alt: 0, lookYaw: 0, lookPitch: -0.1, CAP: 2500, SUCK_ALT: 9, load: { n: 0, g: 0 } };
+  const GD = { owned: false, driving: false, busy: false, heading: 0, speed: 0, suck: 0, alt: 0, lookYaw: 0, lookPitch: -0.1, CAP: 2500, SUCK_ALT: 9, TOP: 34, load: { n: 0, g: 0 } };
   GD.pos = new THREE.Vector3(); GD.vel = new THREE.Vector3();
   let scene, root, craft, shadow, fans = [], pads = [], trunkMat, fill, tilt = 0, roll = 0, bob = 0, lastYawRate = 0;
   const tmp = new THREE.Vector3(), e1 = new THREE.Euler(0, 0, 0, 'YXZ'), q1 = new THREE.Quaternion();
@@ -111,9 +111,9 @@
     const yr = -inp.s * (airborne ? 1.35 : 0.5); lastYawRate += (yr - lastYawRate) * Math.min(1, dt * 4); GD.heading += lastYawRate * dt;
     const sh = Math.sin(GD.heading), ch = Math.cos(GD.heading), v = GD.vel, p = GD.pos;
     // Schub nach vorn/hinten nur in der Luft; am Boden rutscht er nicht
-    if (airborne) { const a = inp.f * (inp.f > 0 ? 11 : 6); v.x += -sh * a * dt; v.z += -ch * a * dt; }
-    const drag = airborne ? 0.75 : 6; v.x -= v.x * drag * dt; v.z -= v.z * drag * dt;
-    const hs = Math.hypot(v.x, v.z), MAXS = 24; if (hs > MAXS) { v.x *= MAXS / hs; v.z *= MAXS / hs; }
+    if (airborne) { const a = inp.f * (inp.f > 0 ? 23 : 11); v.x += -sh * a * dt; v.z += -ch * a * dt; }
+    const drag = airborne ? 0.68 : 6; v.x -= v.x * drag * dt; v.z -= v.z * drag * dt;
+    const hs = Math.hypot(v.x, v.z), MAXS = GD.TOP; if (hs > MAXS) { v.x *= MAXS / hs; v.z *= MAXS / hs; }
     v.y += ((inp.up * 6.5) - v.y) * Math.min(1, dt * 3.2);
     p.x += v.x * dt; p.z += v.z * dt; p.y += v.y * dt;
     GD.atLimit = clampAir(p); if (GD.atLimit) { v.x *= Math.max(0, 1 - dt * 4); v.z *= Math.max(0, 1 - dt * 4); }
